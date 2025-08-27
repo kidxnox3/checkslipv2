@@ -2,7 +2,7 @@
 // Serverless function บน Vercel (ไม่เก็บข้อมูล / ไม่เช็คซ้ำ)
 // ทำหน้าที่รับ { img } แล้วส่งต่อไปปลายทางตรวจสลิป จากนั้นส่งผลลัพธ์กลับ
 
-const REMOTE_API = process.env.REMOTE_API || 'https://slip-c.oiioioiiioooioio.download/api/slip';
+const REMOTE_API = process.env.REMOTE_API || 'https://ucwgwgkko4wk408ggsk0cosw.oiio.download/api/slip';
 
 // อ่าน JSON body จาก req (Node serverless)
 function readJson(req) {
@@ -63,3 +63,4 @@ module.exports = async (req, res) => {
     res.status(500).json({ message: 'เกิดข้อผิดพลาด', error: String(err?.message || err) });
   }
 };
+
