@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🔒 Slip Checker — Lukkid & MyTeam</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --bg1:#eef2ff; --bg2:#fae8ff; --card:#ffffff; --accent:#7c3aed; }
+    @keyframes floatIn { 0%{opacity:0; transform: translateY(12px) scale(.98);} 100%{opacity:1; transform: translateY(0) scale(1);} }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.35);} 50%{box-shadow:0 0 0 12px rgba(124,58,237,0);} }
+    .fade-in{ animation: floatIn .5s ease-out both; }
+    .pulse-glow{ animation: pulseGlow 2.2s ease-in-out infinite; }
+    .tween{ transition: all .25s cubic-bezier(.2,.8,.2,1); }
+    /* Accordion for Report */
+    .collapsible{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+    .caret{ transition: transform .25s cubic-bezier(.2,.8,.2,1); transform-origin:center; }
+    .caret.open{ transform: rotate(180deg); }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-[var(--bg1)] to-[var(--bg2)]">
+  <div class="mx-auto max-w-4xl p-4 md:p-8">
+    <!-- Header -->
+    <header class="fade-in rounded-2xl bg-white/80 backdrop-blur border border-violet-200 shadow-xl p-5 md:p-7 flex flex-col md:flex-row items-center gap-4 md:gap-6">
+      <div class="size-14 md:size-16 rounded-2xl bg-violet-600 text-white grid place-items-center tween">
+        <span class="text-2xl md:text-3xl">🔍</span>
+      </div>
+      <div class="flex-1">
+        <h1 class="text-xl md:text-2xl font-bold text-violet-700">Slip Checker — ตรวจสอบสลิปโอนเงิน</h1>
+        <p class="text-sm md:text-base text-gray-500">อัปโหลดรูปสลิป → กดตรวจสอบ → แสดงผลเป็นข้อความอ่านง่าย</p>
+      </div>
+      <button id="resetBtn" class="tween rounded-xl px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700">รีเซ็ต</button>
+    </header>
+
+    <!-- Uploader -->
+    <section class="fade-in mt-5 md:mt-7">
+      <div id="dropZone" class="tween rounded-2xl border-2 border-dashed border-violet-300 bg-white/70 backdrop-blur p-5 md:p-8 text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-lg">
+        <input id="fileInput" type="file" accept="image/*" class="hidden" />
+        <div class="flex flex-col items-center gap-3">
+          <div class="size-16 rounded-2xl bg-violet-50 grid place-items-center pulse-glow">
+            <span class="text-3xl">📄</span>
+          </div>
+          <div class="space-y-1">
+            <p class="text-base md:text-lg font-semibold text-gray-800">ลากรูปสลิปมาวาง หรือ คลิกเพื่อเลือกไฟล์</p>
+            <p class="text-xs md:text-sm text-gray-500">รองรับ JPG/PNG/HEIC | ระบบจะเตรียมภาพให้อัตโนมัติ</p>
+          </div>
+          <div id="fileMeta" class="hidden text-xs md:text-sm text-gray-500"></div>
+        </div>
+      </div>
+
+      <!-- Preview + Actions -->
+      <div id="previewWrap" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="rounded-2xl bg-white border border-violet-100 shadow p-3 md:p-4">
+          <div class="text-sm text-gray-500 mb-2">ตัวอย่างรูป</div>
+          <img id="previewImg" alt="Slip preview" class="w-full h-64 md:h-80 object-contain rounded-xl bg-gray-50" />
+        </div>
+        <div class="rounded-2xl bg-white border border-violet-100 shadow p-4 flex flex-col justify-between">
+          <div>
+            <div class="text-sm text-gray-500 mb-2">ขั้นตอน</div>
+            <ol class="list-decimal list-inside text-sm text-gray-700 space-y-1">
+              <li>ตรวจสอบความชัดของภาพ</li>
+              <li>เตรียมภาพให้เหมาะสมสำหรับการตรวจสอบ</li>
+              <li>เริ่มกระบวนการตรวจสอบสลิป</li>
+            </ol>
+          </div>
+          <button id="checkBtn" class="tween mt-4 rounded-xl px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">ตรวจสอบสลิป</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section id="resultSection" class="hidden fade-in mt-5 md:mt-7">
+      <div id="statusCard" class="rounded-2xl border shadow-lg overflow-hidden">
+        <div id="statusBar" class="px-5 py-4 text-white flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span id="statusEmoji" class="text-2xl">⏳</span>
+            <div>
+              <p id="statusTitle" class="text-lg md:text-xl font-bold">กำลังตรวจสอบภาพ…</p>
+              <p id="statusSub" class="text-xs md:text-sm text-white/90">โปรดรอสักครู่ ระบบกำลังประมวลผล</p>
+            </div>
+          </div>
+          <div class="text-xs md:text-sm opacity-90">Ref: <span id="refShort">—</span> <button id="copyRef" class="ml-2 underline underline-offset-2">คัดลอก</button></div>
+        </div>
+        <div class="bg-white p-5 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 space-y-3">
+            <div>
+              <div class="text-xs text-gray-500">ผู้โอน</div>
+              <div id="sender" class="text-gray-800 font-medium">—</div>
+              <div id="senderBank" class="text-sm text-gray-500">—</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500">ผู้รับ</div>
+              <div id="receiver" class="text-gray-800 font-medium">—</div>
+              <div id="receiverBank" class="text-sm text-gray-500">—</div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-gray-500">จำนวน</div>
+                <div id="amount" class="text-gray-800 font-semibold">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">วันเวลา</div>
+                <div id="date" class="text-gray-800">—</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-sm">
+              <div class="bg-gray-50 rounded-xl p-3">
+                <div class="text-[11px] text-gray-500">อ้างอิง 1</div>
+                <div id="ref1" class="font-medium">—</div>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-3">
+                <div class="text-[11px] text-gray-500">อ้างอิง 2</div>
+                <div id="ref2" class="font-medium">—</div>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-3">
+                <div class="text-[11px] text-gray-500">อ้างอิง 3</div>
+                <div id="ref3" class="font-medium">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right panel -->
+          <div class="md:col-span-1">
+            <div class="rounded-xl border border-gray-200 p-4 bg-gray-50">
+              <div class="text-sm text-gray-600 mb-2">สถานะระบบ</div>
+              <ul id="log" class="text-xs text-gray-500 space-y-1 max-h-40 overflow-auto pr-2">
+                <li>เริ่มต้นระบบ…</li>
+              </ul>
+
+              <div class="mt-3">
+                <div class="text-sm text-gray-600 mb-1">ความครบถ้วนของข้อมูล</div>
+                <div class="w-full h-2 bg-gray-200 rounded-full">
+                  <div id="integrityFill" class="h-2 bg-violet-500 rounded-full" style="width:0%"></div>
+                </div>
+                <div id="integrityLabel" class="text-xs text-gray-500 mt-1">—%</div>
+              </div>
+
+              <!-- ใบรายงาน: แถบกดเพื่อเปิด -->
+              <div class="mt-4">
+                <!-- ปุ่มแถบสรุป -->
+                <button id="reportToggle"
+                  class="w-full tween rounded-lg border border-gray-300 bg-white/90 hover:bg-white px-3 py-2 flex items-center justify-between"
+                  aria-expanded="false" aria-controls="reportPanel">
+                  <div class="text-left">
+                    <div id="reportSummary" class="text-sm font-medium text-gray-800">
+                      ใบรายงาน
+                    </div>
+                    <div class="text-[11px] text-gray-500">
+                      กดเพื่อเปิด/ปิดรายละเอียด
+                    </div>
+                  </div>
+                  <span id="reportCaret" class="caret text-lg">⌄</span>
+                </button>
+
+                <!-- แผงรายละเอียด -->
+                <div id="reportPanel" class="collapsible" role="region" aria-labelledby="reportToggle">
+                  <div class="bg-white rounded-lg border p-3 mt-2">
+                    <pre id="reportText" class="text-xs text-gray-700 whitespace-pre-wrap">—</pre>
+                    <div class="flex gap-2 mt-3">
+                      <button id="copyReport" class="tween rounded-lg px-3 py-1.5 bg-gray-900 text-white text-xs hover:bg-black">
+                        คัดลอกสรุป
+                      </button>
+                      <button id="downloadReport" class="tween rounded-lg px-3 py-1.5 bg-violet-600 text-white text-xs hover:bg-violet-700">
+                        ดาวน์โหลด .txt
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /ใบรายงาน -->
+            </div>
+          </div>
+          <!-- /Right panel -->
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-8 text-center text-xs text-gray-500">
+      © 2025 Lukkid • UI by Tailwind CSS
+    </footer>
+  </div>
+
+  <script>
+    const apiUrl = '/api/slip';
+    let currentRef = '';
+
+    // Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileMeta = document.getElementById('fileMeta');
+    const previewWrap = document.getElementById('previewWrap');
+    const previewImg = document.getElementById('previewImg');
+    const checkBtn = document.getElementById('checkBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const resultSection = document.getElementById('resultSection');
+    const statusBar = document.getElementById('statusBar');
+    const statusEmoji = document.getElementById('statusEmoji');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusSub = document.getElementById('statusSub');
+    const refShort = document.getElementById('refShort');
+    const copyRef = document.getElementById('copyRef');
+
+    const sender = document.getElementById('sender');
+    const senderBank = document.getElementById('senderBank');
+    const receiver = document.getElementById('receiver');
+    const receiverBank = document.getElementById('receiverBank');
+    const amount = document.getElementById('amount');
+    const dateEl = document.getElementById('date');
+    const ref1 = document.getElementById('ref1');
+    const ref2 = document.getElementById('ref2');
+    const ref3 = document.getElementById('ref3');
+
+    const logEl = document.getElementById('log');
+    const integrityFill = document.getElementById('integrityFill');
+    const integrityLabel = document.getElementById('integrityLabel');
+
+    const reportPanel   = document.getElementById('reportPanel');
+    const reportToggle  = document.getElementById('reportToggle');
+    const reportCaret   = document.getElementById('reportCaret');
+    const reportSummary = document.getElementById('reportSummary');
+    const reportText    = document.getElementById('reportText');
+    const copyReport    = document.getElementById('copyReport');
+    const downloadReport= document.getElementById('downloadReport');
+    let reportOpen = false;
+
+    // Helpers
+    function log(msg){
+      const li = document.createElement('li');
+      li.textContent = new Date().toLocaleTimeString('th-TH') + ' — ' + msg;
+      logEl.appendChild(li);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function bytesToSize(bytes){
+      if (!bytes) return '0 B';
+      const sizes = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(bytes)/Math.log(1024));
+      return (bytes/Math.pow(1024,i)).toFixed(2)+' '+sizes[i];
+    }
+    function maskAccount(id){
+      if(!id) return '—';
+      return id.replace(/(\d{1,3})\d+(\d{1})/, '$1•••••$2');
+    }
+    // เวลา: ถ้าลงท้าย Z ให้แสดงตามสลิป (UTC) — ไม่เลื่อน +7
+    function thDate(raw){
+      if(!raw) return '—';
+      try{
+        const s = String(raw);
+        const baseOpts = { dateStyle:'medium', timeStyle:'short' };
+        if (s.endsWith('Z')) {
+          return new Date(raw).toLocaleString('th-TH', { ...baseOpts, timeZone:'UTC' }).replace(' น.', ' น.');
+        }
+        return new Date(raw).toLocaleString('th-TH', { ...baseOpts, timeZone:'Asia/Bangkok' }).replace(' น.', ' น.');
+      }catch{ return '—'; }
+    }
+    function numberFmt(n){
+      if(n===undefined||n===null||Number.isNaN(n)) return '—';
+      return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท';
+    }
+    function tinyRef(ref){
+      if(!ref) return '—';
+      return ref.slice(0,5) + '…' + ref.slice(-4);
+    }
+    function setStatus(type, accent){
+      // type: loading|valid|duplicate|invalid|error
+      const m = {
+        loading:  ['bg-violet-600','⏳','กำลังตรวจสอบภาพ…','กำลังประมวลผลภาพที่ส่งมา'],
+        valid:    ['bg-emerald-600','✅','สลิปจริง','ระบบตรวจสอบเสร็จสิ้น'],
+        duplicate:['bg-amber-600','🟡','สลิปซ้ำ','ระบบตรวจสอบเสร็จสิ้น — รายการนี้มีอยู่แล้ว'],
+        invalid:  ['bg-rose-600','❌','สลิปปลอม/ไม่ถูกต้อง','ระบบตรวจสอบเสร็จสิ้น'],
+        error:    ['bg-amber-700','⚠️','ตรวจสอบไม่ได้','ไม่สามารถดำเนินการตรวจสอบได้']
+      }[type];
+      statusBar.className = `px-5 py-4 text-white flex items-center justify-between ${m[0]}`;
+      statusEmoji.textContent = m[1];
+      statusTitle.textContent = m[2];
+      statusSub.textContent = m[3];
+      statusBar.style.backgroundColor = accent || '';
+    }
+    function completenessScore(d){
+      const fields = [
+        d.ref, d.date, d.sender_name, d.sender_id,
+        d.sender_bank || d?.sender_bank_details?.name,
+        d.receiver_name, d.receiver_id,
+        (d.amount !== undefined && d.amount !== null)
+      ];
+      const have = fields.filter(Boolean).length;
+      return Math.round((have / fields.length) * 100);
+    }
+    function buildReport(d, extra){
+      const bankSender = d.sender_bank_details ? `${d.sender_bank_details.name} (${d.sender_bank_details.code})`
+                      : (d.sender_bank || '—');
+      const bankReceiver = d.receiver_bank_details ? `${d.receiver_bank_details.name} (${d.receiver_bank_details.code})`
+                      : (d.receiver_bank || '—');
+      const lines = [
+        `สถานะ: ${extra.statusText}`,
+        `อ้างอิง (Ref): ${d.ref || '—'}`,
+        `วันเวลา: ${d.date ? thDate(d.date) : '—'}`,
+        `จำนวนเงิน: ${d.amount!==undefined ? numberFmt(d.amount) : (d.reference_1 || '—')}`,
+        `ผู้โอน: ${d.sender_name ? `${d.sender_name} (${maskAccount(d.sender_id)})` : '—'}`,
+        `ธนาคารผู้โอน: ${bankSender}`,
+        `ผู้รับ: ${d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—'}`,
+        `ธนาคารผู้รับ: ${bankReceiver}`,
+        `อ้างอิงเพิ่มเติม: ${[d.reference_1, d.reference_2, d.reference_3].filter(Boolean).join(' | ') || '—'}`,
+        extra.duplicate ? `หมายเหตุ: พบสลิปซ้ำ (บันทึกไว้เมื่อ ${extra.firstSeen || '—'})` : null,
+        extra.storedAt ? `บันทึกเมื่อ: ${extra.storedAt}` : null,
+      ].filter(Boolean);
+      return lines.join('\n');
+    }
+
+    // Accordion handler
+    reportToggle.addEventListener('click', () => {
+      reportOpen = !reportOpen;
+      reportToggle.setAttribute('aria-expanded', reportOpen ? 'true' : 'false');
+      if (reportOpen) {
+        reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px';
+        reportCaret.classList.add('open');
+      } else {
+        reportPanel.style.maxHeight = '0px';
+        reportCaret.classList.remove('open');
+      }
+    });
+
+    // Drag & Drop
+    dropZone.addEventListener('click', ()=> fileInput.click());
+    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('bg-violet-50'); });
+    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('bg-violet-50'));
+    dropZone.addEventListener('drop', async (e)=>{
+      e.preventDefault(); dropZone.classList.remove('bg-violet-50');
+      const file = e.dataTransfer.files?.[0]; if(file) await handleFile(file);
+    });
+    fileInput.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0]; if(file) await handleFile(file);
+    });
+
+    async function fileToDataUrlCompressed(file, maxW=1600, maxH=1600, quality=.85){
+      const img = document.createElement('img');
+      const reader = new FileReader();
+      const load = new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
+      reader.readAsDataURL(file);
+      const base64 = await new Promise((res)=>{ reader.onload = () => res(reader.result); });
+      img.src = base64;
+      await load;
+      const canvas = document.createElement('canvas');
+      let {width:w, height:h} = img;
+      const ratio = Math.min(maxW/w, maxH/h, 1);
+      canvas.width = Math.round(w*ratio);
+      canvas.height = Math.round(h*ratio);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0,0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    async function handleFile(file){
+      const sizeTxt = bytesToSize(file.size);
+      log('เพิ่มภาพแล้ว ('+ sizeTxt +')');
+      const dataUrl = await fileToDataUrlCompressed(file);
+      previewImg.src = dataUrl;
+      fileMeta.classList.remove('hidden');
+      fileMeta.textContent = 'ภาพพร้อมตรวจสอบ • ขนาดประมาณ ~ ' + Math.round((dataUrl.length*3/4)/1024) + ' KB';
+      showSection(previewWrap);
+      showSection(resultSection);
+      setStatus('loading');
+      refShort.textContent = '—';
+      currentRef = '';
+      reportText.textContent = '—';
+      integrityFill.style.width = '0%';
+      integrityLabel.textContent = '—%';
+    }
+
+    // Buttons
+    checkBtn.addEventListener('click', async ()=>{
+      if(!previewImg.src) return alert('กรุณาเลือกรูปก่อน');
+      await verifySlip(previewImg.src);
+    });
+    resetBtn.addEventListener('click', ()=>{
+      fileInput.value = '';
+      previewImg.src = '';
+      hideSection(previewWrap);
+      hideSection(resultSection);
+      log('รีเซ็ตแล้ว');
+    });
+    copyRef.addEventListener('click', async ()=>{
+      const txt = currentRef || refShort.textContent;
+      try{ await navigator.clipboard.writeText(txt); copyRef.textContent = 'คัดลอกแล้ว'; setTimeout(()=>copyRef.textContent='คัดลอก',1200);}catch{}
+    });
+    copyReport.addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(reportText.textContent.trim());
+        copyReport.textContent = 'คัดลอกแล้ว'; setTimeout(()=>copyReport.textContent='คัดลอกสรุป',1200);
+      } catch {}
+    });
+    downloadReport.addEventListener('click', ()=>{
+      const blob = new Blob([reportText.textContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = (currentRef ? `slip_${currentRef}.txt` : 'slip_report.txt');
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    async function verifySlip(imgDataUrl){
+      try{
+        setStatus('loading');
+        log('กำลังตรวจสอบภาพ…');
+        const { data } = await axios.post(apiUrl, { img: imgDataUrl }, { timeout: 25000 });
+
+        const ok = (data && data.data && /success/i.test(data.message || ''));
+        const d = data?.data || {};
+        const bankColor = d.sender_bank_details?.color || d.receiver_bank_details?.color || '';
+
+        // เติม UI
+        sender.textContent = d.sender_name ? `${d.sender_name} (${maskAccount(d.sender_id)})` : '—';
+        senderBank.textContent = d.sender_bank_details ? `${d.sender_bank_details.name} (${d.sender_bank_details.code})` : (d.sender_bank || '—');
+        receiver.textContent = d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—';
+        receiverBank.textContent = d.receiver_bank_details ? `${d.receiver_bank_details.name} (${d.receiver_bank_details.code})` : (d.receiver_bank || '—');
+        amount.textContent = d.amount!==undefined ? numberFmt(d.amount) : (d.reference_1 || '—');
+        dateEl.textContent = d.date ? thDate(d.date) : '—';
+        ref1.textContent = d.reference_1 || '—';
+        ref2.textContent = d.reference_2 || '—';
+        ref3.textContent = d.reference_3 || '—';
+
+        currentRef = d.ref || '';
+        refShort.textContent = tinyRef(currentRef);
+
+        // ความครบถ้วน
+        const pct = completenessScore(d);
+        integrityFill.style.width = pct + '%';
+        integrityLabel.textContent = pct + '%';
+
+        // สถานะ + รายงาน
+        let statusText;
+        if (data.duplicate === true) {
+          setStatus('duplicate', bankColor);
+          log('ระบบตรวจสอบเสร็จสิ้น — พบสลิปซ้ำ');
+          statusText = 'สลิปซ้ำ (ตรวจพบในระบบก่อนหน้า)';
+        } else if (ok) {
+          setStatus('valid', bankColor);
+          log('ระบบตรวจสอบเสร็จสิ้น');
+          statusText = 'สลิปจริง';
+        } else {
+          setStatus('invalid');
+          log('ระบบตรวจสอบเสร็จสิ้น (ข้อมูลไม่ครบถ้วน)');
+          statusText = 'สลิปปลอมหรือไม่ถูกต้อง';
+        }
+
+        reportText.textContent = buildReport(d, {
+          statusText,
+          duplicate: !!data.duplicate,
+          firstSeen: data.first_seen_at || null,
+          storedAt: data.stored_at || null
+        });
+
+        // อัปเดตหัวแถบใบรายงาน
+        reportSummary.textContent = `ใบรายงาน • ${statusText.replace(/\s*\(.*\)/,'')} • Ref: ${tinyRef(currentRef)}`;
+        if (reportOpen) {
+          setTimeout(()=>{ reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; }, 30);
+        }
+
+      }catch(err){
+        console.error(err);
+        const msg = err?.response?.data?.error || err?.message || 'ไม่ทราบสาเหตุ';
+        log('เกิดข้อผิดพลาดในการตรวจสอบ: ' + msg);
+        setStatus('error');
+        reportSummary.textContent = 'ใบรายงาน • ข้อผิดพลาด';
+        reportText.textContent = 'ไม่สามารถจัดทำใบรายงานได้เนื่องจากเกิดข้อผิดพลาด: ' + msg;
+      }
+    }
+
+    // Show/Hide helpers
+    function showSection(el){ el.classList.remove('hidden'); el.classList.add('fade-in'); }
+    function hideSection(el){ el.classList.add('hidden'); }
+  </script>
+</body>
+</html>

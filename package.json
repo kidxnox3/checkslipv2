@@ -1,0 +1,11 @@
+{
+  "name": "slip-checker-vercel",
+  "private": true,
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@vercel/blob": "latest",
+    "@vercel/kv": "latest"
+  }
+}
