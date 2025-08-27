@@ -263,12 +263,11 @@
       return ref.slice(0,5) + '…' + ref.slice(-4);
     }
     function setStatus(type, accent){
-      // type: loading|valid|duplicate|invalid|error
+      // type: loading | valid | invalid | error
       const m = {
         loading:  ['bg-violet-600','⏳','กำลังตรวจสอบภาพ…','กำลังประมวลผลภาพที่ส่งมา'],
         valid:    ['bg-emerald-600','✅','สลิปจริง','ระบบตรวจสอบเสร็จสิ้น'],
-        duplicate:['bg-amber-600','🟡','สลิปซ้ำ','ระบบตรวจสอบเสร็จสิ้น — รายการนี้มีอยู่แล้ว'],
-        invalid:  ['bg-rose-600','❌','สลิปปลอม/ไม่ถูกต้อง','ระบบตรวจสอบเสร็จสิ้น'],
+        invalid:  ['bg-rose-600','❌','สลิปปลอมหรือไม่ถูกต้อง','ระบบตรวจสอบเสร็จสิ้น'],
         error:    ['bg-amber-700','⚠️','ตรวจสอบไม่ได้','ไม่สามารถดำเนินการตรวจสอบได้']
       }[type];
       statusBar.className = `px-5 py-4 text-white flex items-center justify-between ${m[0]}`;
@@ -301,10 +300,8 @@
         `ธนาคารผู้โอน: ${bankSender}`,
         `ผู้รับ: ${d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—'}`,
         `ธนาคารผู้รับ: ${bankReceiver}`,
-        `อ้างอิงเพิ่มเติม: ${[d.reference_1, d.reference_2, d.reference_3].filter(Boolean).join(' | ') || '—'}`,
-        extra.duplicate ? `หมายเหตุ: พบสลิปซ้ำ (บันทึกไว้เมื่อ ${extra.firstSeen || '—'})` : null,
-        extra.storedAt ? `บันทึกเมื่อ: ${extra.storedAt}` : null,
-      ].filter(Boolean);
+        `อ้างอิงเพิ่มเติม: ${[d.reference_1, d.reference_2, d.reference_3].filter(Boolean).join(' | ') || '—'}`
+      ];
       return lines.join('\n');
     }
 
@@ -431,29 +428,20 @@
 
         // สถานะ + รายงาน
         let statusText;
-        if (data.duplicate === true) {
-          setStatus('duplicate', bankColor);
-          log('ระบบตรวจสอบเสร็จสิ้น — พบสลิปซ้ำ');
-          statusText = 'สลิปซ้ำ (ตรวจพบในระบบก่อนหน้า)';
-        } else if (ok) {
+        if (ok) {
           setStatus('valid', bankColor);
           log('ระบบตรวจสอบเสร็จสิ้น');
           statusText = 'สลิปจริง';
         } else {
           setStatus('invalid');
-          log('ระบบตรวจสอบเสร็จสิ้น (ข้อมูลไม่ครบถ้วน)');
+          log('ระบบตรวจสอบเสร็จสิ้น (ข้อมูลไม่ครบถ้วนหรือไม่ถูกต้อง)');
           statusText = 'สลิปปลอมหรือไม่ถูกต้อง';
         }
 
-        reportText.textContent = buildReport(d, {
-          statusText,
-          duplicate: !!data.duplicate,
-          firstSeen: data.first_seen_at || null,
-          storedAt: data.stored_at || null
-        });
+        reportText.textContent = buildReport(d, { statusText });
 
         // อัปเดตหัวแถบใบรายงาน
-        reportSummary.textContent = `ใบรายงาน • ${statusText.replace(/\s*\(.*\)/,'')} • Ref: ${tinyRef(currentRef)}`;
+        reportSummary.textContent = `ใบรายงาน • ${statusText} • Ref: ${tinyRef(currentRef)}`;
         if (reportOpen) {
           setTimeout(()=>{ reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; }, 30);
         }
