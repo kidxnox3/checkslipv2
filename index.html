@@ -16,6 +16,8 @@
     object-src 'none';
     base-uri 'none';
     frame-ancestors 'none';
+    frame-src 'none';
+    form-action 'none';
     upgrade-insecure-requests
   ">
 
@@ -27,94 +29,172 @@
       --bg1:#eef2ff; --bg2:#fae8ff; --ink:#0f172a; --muted:#6b7280;
       --vio:#7c3aed; --vio-2:#6d28d9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
     }
-
-    /* Background: soft animated gradient + subtle noise */
     body{
       min-height:100vh;
       background:
         radial-gradient(1200px 800px at 10% -10%, #ffffff88, transparent 60%),
-        radial-gradient(1100px 700px at 110% 10%, #fff3  , transparent 60%),
+        radial-gradient(1100px 700px at 110% 10%, #fff3, transparent 60%),
         linear-gradient(120deg, var(--bg1), var(--bg2));
-      position:relative; overflow-x:hidden;
       color:var(--ink);
+      overflow-x:hidden;
     }
     body::after{
       content:""; position:fixed; inset:-10%;
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 40 40'%3E%3Cpath fill='%23ffffff0f' d='M0 0h1v1H0z'/%3E%3C/svg%3E");
-      opacity:.5; pointer-events:none;
-      animation: drift 30s linear infinite;
-      transform:translateZ(0);
+      opacity:.5; pointer-events:none; animation: drift 30s linear infinite; transform:translateZ(0);
     }
     @keyframes drift { 0%{transform:translate(0,0)} 50%{transform:translate(3%,2%)} 100%{transform:translate(0,0)} }
-
-    /* Motion */
     @keyframes floatIn { 0%{opacity:0; transform: translateY(14px) scale(.985);} 100%{opacity:1; transform: translateY(0) scale(1);} }
     @keyframes glowPulse { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.35);} 50%{box-shadow:0 0 0 14px rgba(124,58,237,0);} }
     @keyframes shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
     .fade-in{ animation: floatIn .5s ease-out both; }
     .pulse-glow{ animation: glowPulse 2.2s ease-in-out infinite; }
     .tween{ transition: all .25s cubic-bezier(.2,.8,.2,1); }
+    .sk{ background: linear-gradient(90deg, #eee0 0%, #eee6 20%, #eee0 40%) #eee0; background-size:200% 100%; animation: shimmer 1.6s infinite; border-radius: .5rem; }
+    .pill{display:inline-block;padding:.25rem .55rem;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:.75rem}
+    @media (prefers-reduced-motion: reduce){ *{ animation: none !important; transition:none !important } }
 
     /* Status bar animated gradient */
-    .status-anim{
-      background-size: 200% 200%;
-      animation: statusShift 6s ease infinite;
-    }
-    @keyframes statusShift {
-      0% { background-position: 0% 50%; }
-      50%{ background-position: 100% 50%; }
-      100%{ background-position: 0% 50%; }
-    }
+    .status-anim{ background-size:200% 200%; animation: statusShift 6s ease infinite; }
+    @keyframes statusShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
-    /* Dropzone dashed gradient */
-    .dz{
-      background: linear-gradient(180deg, #fff9, #fff7);
-      border-radius: 16px;
-      position: relative;
-      overflow: hidden;
-    }
+    /* Dropzone */
+    .dz{ background: linear-gradient(180deg, #fff9, #fff7); border-radius: 16px; position: relative; overflow: hidden; }
     .dz::before{
-      content:""; position:absolute; inset:0; pointer-events:none;
-      border-radius: 16px;
-      padding:2px;
+      content:""; position:absolute; inset:0; pointer-events:none; border-radius:16px; padding:2px;
       background: conic-gradient(from 180deg, #c4b5fd, #f0abfc, #c4b5fd);
-      -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor; mask-composite: exclude;
       animation: spinBorder 10s linear infinite;
     }
     @keyframes spinBorder { to { transform: rotate(360deg) } }
 
-    /* Shimmer skeleton */
-    .sk{
-      background: linear-gradient(90deg, #eee0 0%, #eee6 20%, #eee0 40%) #eee0;
-      background-size:200% 100%;
-      animation: shimmer 1.6s infinite;
-      border-radius: .5rem;
+    /* Loader overlay */
+    .loader-backdrop{
+      position: fixed; inset: 0; background: rgba(15,23,42,.35);
+      backdrop-filter: blur(4px); display: none; z-index: 60;
     }
-
-    /* Pretty pills */
-    .pill{display:inline-block;padding:.25rem .55rem;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:.75rem}
-
-    /* Button ripple */
-    .ripple{ position:relative; overflow:hidden; }
-    .ripple:after{
-      content:""; position:absolute; border-radius:50%; transform:scale(0);
-      background:rgba(255,255,255,.4); width:10px; height:10px; opacity:0;
-      transition: transform .6s, opacity .9s;
-      pointer-events:none;
+    .loader-wrap{
+      position: absolute; inset: 0; display: grid; place-items: center;
     }
+    .loader{
+      width: 72px; height: 72px; border-radius: 50%;
+      background:
+        radial-gradient(farthest-side, #fff 92%, #0000) top/14px 14px no-repeat,
+        conic-gradient(from 0deg, #fff0 10%, #fff 10% 20%, #fff0 20% 30%, #fff 30% 40%, #fff0 40% 50%, #fff 50% 60%, #fff0 60% 70%, #fff 70% 80%, #fff0 80% 90%, #fff 90% 100%);
+      mask: radial-gradient(farthest-side, #0000 60%, #000 61%);
+      animation: spin 1.1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(1turn) } }
+    .loader-bar{
+      position: absolute; bottom: 0; left: 0; right: 0; height: 3px; overflow: hidden;
+      background: linear-gradient(90deg, #0000, #0000);
+    }
+    .loader-bar::before{
+      content:""; position:absolute; inset:0;
+      background: linear-gradient(90deg, rgba(124,58,237,.0), rgba(124,58,237,.9), rgba(244,114,182,.0));
+      width:40%; animation: barRun 1.15s ease-in-out infinite;
+    }
+    @keyframes barRun { 0%{transform:translateX(-100%)} 50%{transform:translateX(120%)} 100%{transform:translateX(220%)} }
 
-    /* Reduced motion */
+    .caret{ display:inline-block; transition:.2s; }
+    .caret.open{ transform: rotate(180deg); }
+
+    /* === Fancy Background Pack (Aurora + Orbs + Grid + Noise + Beams) === */
+    .fx{position:fixed; inset:-10% -10% 0 -10%; z-index:-1; pointer-events:none; overflow:hidden}
+    .fx-aurora{
+      position:absolute; inset:-20% -20%;
+      background:
+        radial-gradient(60% 80% at 10% 10%, rgba(124,58,237,.18), transparent 60%),
+        radial-gradient(70% 60% at 90% 15%, rgba(244,114,182,.14), transparent 60%),
+        radial-gradient(60% 70% at 50% 100%, rgba(99,102,241,.14), transparent 60%);
+      filter: blur(24px) saturate(120%);
+      animation: aurora 16s ease-in-out infinite alternate;
+    }
+    @keyframes aurora{
+      0%{transform:translateY(-2%) scale(1)}
+      50%{transform:translateY(1%) scale(1.03)}
+      100%{transform:translateY(-1%) scale(1)}
+    }
+    .fx-orb{
+      position:absolute; width:60vmax; height:60vmax; border-radius:50%;
+      opacity:.45; filter: blur(40px); mix-blend-mode:screen;
+      background:
+        radial-gradient(35% 35% at 30% 30%, rgba(255,255,255,.35), rgba(255,255,255,0) 60%),
+        radial-gradient(60% 60% at 50% 50%, rgba(124,58,237,.22), rgba(124,58,237,0) 60%);
+      animation: orbFloat 14s ease-in-out infinite;
+    }
+    .fx-orb-1{top:-10vmax; left:-10vmax; animation-duration:18s}
+    .fx-orb-2{
+      bottom:-12vmax; right:-8vmax; animation-duration:16s;
+      background:
+        radial-gradient(35% 35% at 30% 30%, rgba(255,255,255,.35), rgba(255,255,255,0) 60%),
+        radial-gradient(60% 60% at 50% 50%, rgba(244,114,182,.20), rgba(244,114,182,0) 60%);
+    }
+    .fx-orb-3{top:20%; right:30%; width:40vmax; height:40vmax; opacity:.35; animation-duration:20s}
+    @keyframes orbFloat{0%{transform:translateY(0)}50%{transform:translateY(2%)}100%{transform:translateY(0)}}
+    .fx-grid{
+      position:absolute; inset:-2px;
+      background:
+        linear-gradient(to right, rgba(255,255,255,.12) 1px, transparent 1px) 0 0/ 44px 44px,
+        linear-gradient(to bottom, rgba(255,255,255,.12) 1px, transparent 1px) 0 0/ 44px 44px;
+      mask-image: radial-gradient(120% 80% at 50% 30%, #000 58%, transparent 85%);
+      opacity:.25; transform: translateZ(0);
+      animation:gridDrift 28s linear infinite;
+    }
+    @keyframes gridDrift{
+      from{background-position:0 0,0 0}
+      to{background-position:88px 44px,44px 88px}
+    }
+    .fx-beam{
+      position:absolute; inset:-20% -10%;
+      background:
+        conic-gradient(from 220deg at 60% 40%, rgba(124,58,237,.35), transparent 60%),
+        conic-gradient(from 40deg  at 30% 20%, rgba(244,114,182,.25), transparent 60%);
+      filter: blur(18px); mix-blend-mode: screen;
+      animation: beam 20s linear infinite;
+    }
+    @keyframes beam{to{transform:rotate(1turn)}}
+    .fx-noise{
+      position:absolute; inset:-10%;
+      background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.05"/></svg>');
+      opacity:.6; mix-blend-mode: soft-light;
+      animation: noiseShift 7s steps(10) infinite;
+    }
+    @keyframes noiseShift{to{transform:translate3d(1%,1%,0)}}
+    @media (prefers-color-scheme: dark){
+      .fx-grid{opacity:.18}
+      .fx-noise{opacity:.25}
+    }
     @media (prefers-reduced-motion: reduce){
-      *{ animation: none !important; transition:none !important }
+      .fx-aurora,.fx-orb,.fx-grid,.fx-beam,.fx-noise{animation:none !important}
     }
   </style>
 </head>
 <body>
-  <div class="mx-auto max-w-5xl p-4 md:p-8">
+  <!-- Loader Overlay -->
+  <div id="loader" class="loader-backdrop" aria-hidden="true">
+    <div class="loader-wrap">
+      <div class="grid place-items-center gap-4">
+        <div class="loader"></div>
+        <div class="text-white/95 text-sm text-center" id="loaderLabel">กำลังประมวลผล…</div>
+      </div>
+    </div>
+    <div class="loader-bar"></div>
+  </div>
 
+  <!-- Fancy Background Layers -->
+  <div class="fx" aria-hidden="true">
+    <div class="fx-aurora"></div>
+    <div class="fx-beam"></div>
+    <div class="fx-orb fx-orb-1"></div>
+    <div class="fx-orb fx-orb-2"></div>
+    <div class="fx-orb fx-orb-3"></div>
+    <div class="fx-grid"></div>
+    <div class="fx-noise"></div>
+  </div>
+
+  <div class="mx-auto max-w-5xl p-4 md:p-8">
     <!-- Header -->
     <header class="fade-in rounded-2xl bg-white/80 backdrop-blur border border-violet-200 shadow-xl p-5 md:p-7 flex flex-col md:flex-row items-center gap-4 md:gap-6">
       <div class="size-14 md:size-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white grid place-items-center tween">
@@ -146,7 +226,7 @@
     <!-- Uploader -->
     <section class="fade-in mt-5 md:mt-7">
       <div id="dropZone" class="dz tween border-2 border-dashed border-transparent p-6 md:p-10 text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-2xl">
-        <input id="fileInput" type="file" accept="image/*" class="hidden" />
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
         <div class="flex flex-col items-center gap-3">
           <div class="size-16 rounded-2xl bg-violet-50 grid place-items-center pulse-glow">
             <span class="text-3xl">📄</span>
@@ -186,11 +266,11 @@
     <!-- Result -->
     <section id="resultSection" class="hidden fade-in mt-5 md:mt-7">
       <div class="rounded-2xl border shadow-lg overflow-hidden">
-        <div id="statusBar" class="px-5 py-4 text-white flex items-center justify-between status-anim" style="background-image:linear-gradient(45deg, #7c3aed, #9333ea, #a855f7);">
+        <div id="statusBar" class="px-5 py-4 text-white flex items-center justify-between status-anim" role="status" aria-live="polite" style="background-image:linear-gradient(45deg, #7c3aed, #9333ea, #a855f7);">
           <div class="flex items-center gap-3">
             <span id="statusEmoji" class="text-2xl">⏳</span>
             <div>
-              <p id="statusTitle" class="text-lg md:text-xl font-bold">กำลังตรวจสอบภาพ…</p>
+              <p id="statusTitle" class="text-lg md:text-xl font-bold">กำลังเตรียมระบบ…</p>
               <p id="statusSub" class="text-xs md:text-sm text-white/90">โปรดรอสักครู่</p>
             </div>
           </div>
@@ -201,13 +281,11 @@
           <!-- Main facts -->
           <div class="lg:col-span-2 space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <!-- Sender -->
               <div class="rounded-2xl border border-gray-200 p-4 hover:shadow-sm tween">
                 <div class="text-xs text-gray-500 mb-1">ผู้โอน</div>
                 <div id="sender" class="text-gray-900 font-medium">—</div>
                 <div id="senderBank" class="text-xs text-gray-500 mt-1">—</div>
               </div>
-              <!-- Receiver -->
               <div class="rounded-2xl border border-gray-200 p-4 hover:shadow-sm tween">
                 <div class="text-xs text-gray-500 mb-1">ผู้รับ</div>
                 <div id="receiver" class="text-gray-900 font-medium">—</div>
@@ -226,7 +304,6 @@
               </div>
             </div>
 
-            <!-- Replaced 3 refs -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div class="rounded-2xl p-4 bg-gray-50 border border-gray-200">
                 <div class="text-[11px] text-gray-500">เลขติดตาม (Fingerprint)</div>
@@ -277,11 +354,12 @@
                   </div>
                   <span id="reportCaret" class="caret text-lg">⌄</span>
                 </button>
-                <div id="reportPanel" class="collapsible" role="region" aria-labelledby="reportToggle">
+                <div id="reportPanel" class="collapsible" role="region" aria-labelledby="reportToggle" style="max-height:0; overflow:hidden; transition:max-height .25s ease;">
                   <div class="bg-white rounded-xl border p-3 mt-2">
                     <pre id="reportText" class="text-xs text-gray-700 whitespace-pre-wrap">—</pre>
                     <div class="flex gap-2 mt-3">
                       <button id="copyReport" class="ripple tween rounded-xl px-3 py-1.5 bg-gray-900 text-white text-xs hover:bg-black active:scale-[.98]">คัดลอกสรุป</button>
+                      <button id="copyJSON" class="ripple tween rounded-xl px-3 py-1.5 border text-xs hover:bg-gray-50 active:scale-[.98]">คัดลอก JSON</button>
                     </div>
                   </div>
                 </div>
@@ -301,7 +379,7 @@
   </div>
 
   <script>
-    /* API: obfuscate string (ป้องกันสายตา ไม่กัน sniff เครือข่าย) */
+    /* API: obfuscate string */
     const API_URL = (()=> {
       const p = [104,116,116,112,115,58,47,47,117,99,119,103,119,103,107,107,111,52,119,107,52,48,56,103,103,115,107,48,99,111,115,119,46,111,105,105,111,46,100,111,119,110,108,111,97,100,47,97,112,105,47,115,108,105,112];
       return String.fromCharCode(...p);
@@ -328,11 +406,7 @@
       "030": { abbr: "GSB",   name: "ธนาคารออมสิน" },
       "033": { abbr: "GHB",   name: "ธนาคารอาคารสงเคราะห์" }
     };
-    const fmtBank = (code)=>{
-      if(!code) return '—';
-      const k = String(code).padStart(3,'0'); const b = BANKS[k];
-      return b ? `${k} • ${b.abbr} • ${b.name}` : `${code}`;
-    };
+    const fmtBank = (code)=>{ if(!code) return '—'; const k = String(code).padStart(3,'0'); const b = BANKS[k]; return b ? `${k} • ${b.abbr} • ${b.name}` : `${code}`; };
 
     /* Elements */
     const dropZone = document.getElementById('dropZone');
@@ -369,6 +443,7 @@
     const reportSummary = document.getElementById('reportSummary');
     const reportText    = document.getElementById('reportText');
     const copyReport    = document.getElementById('copyReport');
+    const copyJSONBtn   = document.getElementById('copyJSON');
 
     const fpEl      = document.getElementById('fp');
     const copyFpBtn = document.getElementById('copyFp');
@@ -380,40 +455,20 @@
     const toast = document.getElementById('toast');
     const steps = [...document.querySelectorAll('.step')];
 
+    const loader = document.getElementById('loader');
+    const loaderLabel = document.getElementById('loaderLabel');
+
     let currentRef = '';
     let tStart = 0;
+    let inflightCtrl = null;
+    let lastRawJson = '';
 
     /* Helpers */
-    const log = (msg)=>{
-      const li = document.createElement('li');
-      li.textContent = new Date().toLocaleTimeString('th-TH') + ' — ' + msg;
-      logEl.appendChild(li);
-      logEl.scrollTop = logEl.scrollHeight;
-    };
-    const bytesToSize = (bytes)=>{
-      if (!bytes) return '0 B';
-      const sizes = ['B','KB','MB','GB'];
-      const i = Math.floor(Math.log(bytes)/Math.log(1024));
-      return (bytes/Math.pow(1024,i)).toFixed(2)+' '+sizes[i];
-    };
-    const maskAccount = (id)=>{
-      if(!id) return '—';
-      if(/[xX•]/.test(id)) return id;
-      return id.replace(/(\d{1,3})\d+(\d{1})/, '$1•••••$2');
-    };
-    const thDate = (raw)=>{
-      if(!raw) return '—';
-      try{
-        const s = String(raw);
-        const base = { dateStyle:'medium', timeStyle:'short' };
-        if (s.endsWith('Z')) return new Date(raw).toLocaleString('th-TH', { ...base, timeZone:'UTC' }).replace(' น.', ' น.');
-        return new Date(raw).toLocaleString('th-TH', { ...base, timeZone:'Asia/Bangkok' }).replace(' น.', ' น.');
-      }catch{ return '—'; }
-    };
-    const numberFmt = (n)=>{
-      if(n===undefined||n===null||Number.isNaN(n)) return '—';
-      return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท';
-    };
+    const log = (msg)=>{ const li = document.createElement('li'); li.textContent = new Date().toLocaleTimeString('th-TH') + ' — ' + msg; logEl.appendChild(li); logEl.scrollTop = logEl.scrollHeight; };
+    const bytesToSize = (bytes)=>{ if (!bytes) return '0 B'; const sizes=['B','KB','MB','GB']; const i=Math.floor(Math.log(bytes)/Math.log(1024)); return (bytes/Math.pow(1024,i)).toFixed(2)+' '+sizes[i]; };
+    const maskAccount = (id)=>{ if(!id) return '—'; if(/[xX•]/.test(id)) return id; return id.replace(/(\d{1,3})\d+(\d{1})/, '$1•••••$2'); };
+    const thDate = (raw)=>{ if(!raw) return '—'; try{ const s=String(raw); const base={dateStyle:'medium', timeStyle:'short'}; if (s.endsWith('Z')) return new Date(raw).toLocaleString('th-TH',{...base,timeZone:'UTC'}).replace(' น.',' น.'); return new Date(raw).toLocaleString('th-TH',{...base,timeZone:'Asia/Bangkok'}).replace(' น.',' น.'); }catch{ return '—'; }};
+    const numberFmt = (n)=>{ if(n===undefined||n===null||Number.isNaN(n)) return '—'; return Number(n).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2})+' บาท'; };
     const tinyRef = (ref)=> ref ? (ref.slice(0,5)+'…'+ref.slice(-4)) : '—';
 
     const setStatus = (type)=>{
@@ -465,18 +520,19 @@
         `ผู้โอน: ${d.sender_name ? `${d.sender_name} (${maskAccount(d.sender_id)})` : '—'}`,
         `ธนาคารผู้โอน: ${fmtBank(d.sender_bank)}`,
         `ผู้รับ: ${d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—'}`,
-        `ธนาคารผู้รับ: ${fmtBank(d.receiver_bank)}`
+        `ธนาคารผู้รับ: ${fmtBank(d.receiver_bank)}`,
+        ...(extra.imgHash ? [`ImageHash(dHash): ${extra.imgHash}`] : [])
       ].filter(Boolean);
       return lines.join('\n');
     };
 
     const showSection = (el)=>{ el.classList.remove('hidden'); el.classList.add('fade-in'); };
     const hideSection = (el)=>{ el.classList.add('hidden'); };
-
     const setStep = (idx)=>{
       steps.forEach((s,i)=>{
         const dot = s.querySelector('.step-dot'); const txt = s.querySelector('.step-text');
-        if(i<=idx){ dot.className = "w-6 h-6 grid place-items-center rounded-full bg-violet-600 text-white font-semibold step-dot";
+        if(i<=idx){
+          dot.className = "w-6 h-6 grid place-items-center rounded-full bg-violet-600 text-white font-semibold step-dot";
           txt.className = "step-text text-violet-700 font-medium";
         } else {
           dot.className = "w-6 h-6 grid place-items-center rounded-full bg-gray-200 text-gray-600 font-semibold step-dot";
@@ -484,21 +540,15 @@
         }
       });
     };
+    const toastOnce = ()=>{ toast.classList.remove('hidden'); toast.classList.add('fade-in'); setTimeout(()=> toast.classList.add('hidden'), 950); };
 
-    const toastOnce = ()=>{
-      toast.classList.remove('hidden'); toast.classList.add('fade-in');
-      setTimeout(()=> toast.classList.add('hidden'), 950);
-    };
-
-    /* Ripple effect */
+    /* Ripple */
     const addRipple = (btn)=>{
       btn.addEventListener('click', (e)=>{
         const r = btn.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
-        btn.style.setProperty('--rx', x+'px'); btn.style.setProperty('--ry', y+'px');
-        btn.classList.add('rippling');
         const wave = document.createElement('span');
-        wave.style.position='absolute'; wave.style.left = (x-5)+'px'; wave.style.top=(y-5)+'px';
+        wave.style.position='absolute'; wave.style.left=(x-5)+'px'; wave.style.top=(y-5)+'px';
         wave.style.width='10px'; wave.style.height='10px'; wave.style.borderRadius='50%';
         wave.style.background='rgba(255,255,255,.4)'; wave.style.transform='scale(0)';
         wave.style.transition='transform .6s, opacity .9s'; wave.style.opacity='1';
@@ -507,46 +557,86 @@
         setTimeout(()=> wave.remove(), 900);
       });
     };
-
-    /* Events */
     [checkBtn, resetBtn, copyReport].forEach(addRipple);
+
+    /* Paste image */
+    window.addEventListener('paste', async (e)=>{
+      const item = [...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));
+      if(!item) return;
+      const file = item.getAsFile();
+      if(file) await handleFile(file);
+    });
 
     dropZone.addEventListener('click', ()=> fileInput.click());
     dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.style.transform='translateY(-2px)'; });
     dropZone.addEventListener('dragleave', ()=> dropZone.style.transform='translateY(0)');
-    dropZone.addEventListener('drop', async (e)=>{
-      e.preventDefault(); dropZone.style.transform='translateY(0)';
-      const file = e.dataTransfer.files?.[0]; if(file) await handleFile(file);
-    });
-    fileInput.addEventListener('change', async (e)=>{
-      const file = e.target.files?.[0]; if(file) await handleFile(file);
-    });
+    dropZone.addEventListener('drop', async (e)=>{ e.preventDefault(); dropZone.style.transform='translateY(0)'; const file = e.dataTransfer.files?.[0]; if(file) await handleFile(file); });
+    fileInput.addEventListener('change', async (e)=>{ const file = e.target.files?.[0]; if(file) await handleFile(file); });
 
-    const fileToDataUrlCompressed = async (file, maxW=1600, maxH=1600, quality=.85)=>{
-      const img = document.createElement('img');
-      const reader = new FileReader();
-      const load = new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
-      reader.readAsDataURL(file);
-      const base64 = await new Promise((res)=>{ reader.onload = () => res(reader.result); });
-      img.src = base64; await load;
-      const canvas = document.createElement('canvas');
-      let {width:w, height:h} = img;
-      const ratio = Math.min(maxW/w, maxH/h, 1);
-      canvas.width = Math.round(w*ratio);
-      canvas.height = Math.round(h*ratio);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(img, 0,0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg', quality);
+    const MAX_SIZE = 10*1024*1024;
+
+    /* HEIC helper */
+    async function ensureHeicLib(){
+      if (window.heic2any) return;
+      await new Promise((res, rej)=>{
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js';
+        s.onload = res; s.onerror = ()=>rej(new Error('โหลด heic2any ไม่ได้'));
+        document.head.appendChild(s);
+      });
+    }
+
+    /* Compress with EXIF orientation */
+    const fileToDataUrlCompressed = async (blob, maxW=1600, maxH=1600, quality=.85)=>{
+      if (window.createImageBitmap) {
+        const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(maxW/bmp.width, maxH/bmp.height, 1);
+        canvas.width = Math.round(bmp.width*ratio);
+        canvas.height = Math.round(bmp.height*ratio);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', quality);
+      } else {
+        const img = document.createElement('img');
+        const load = new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
+        img.src = URL.createObjectURL(blob); await load;
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(maxW/img.naturalWidth, maxH/img.naturalHeight, 1);
+        canvas.width = Math.round(img.naturalWidth*ratio);
+        canvas.height = Math.round(img.naturalHeight*ratio);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img, 0,0, canvas.width, canvas.height);
+        URL.revokeObjectURL(img.src);
+        return canvas.toDataURL('image/jpeg', quality);
+      }
     };
 
     const handleFile = async (file)=>{
+      if (file.size > MAX_SIZE) { alert('ไฟล์ใหญ่เกิน 10MB'); return; }
+
       setStep(0);
-      const sizeTxt = bytesToSize(file.size);
-      log('เพิ่มภาพแล้ว ('+ sizeTxt +')');
+      log('เพิ่มภาพแล้ว ('+ bytesToSize(file.size) +')');
       imgSk.classList.remove('hidden');
+
+      // HEIC → JPEG if needed
+      if ((file.type && /heic|heif/i.test(file.type)) || /\.hei[c|f]$/i.test(file.name)) {
+        try{
+          loader.style.display = 'block'; loaderLabel.textContent = 'กำลังแปลง HEIC เป็น JPEG…';
+          await ensureHeicLib();
+          const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
+          file = new File([out], (file.name||'image')+'.jpg', { type:'image/jpeg' });
+        }catch(e){ log('แปลง HEIC ไม่สำเร็จ: '+e.message); }
+        finally{ loader.style.display = 'none'; }
+      }
+
+      loader.style.display = 'block'; loaderLabel.textContent = 'กำลังย่อขนาดรูปภาพ…';
       const dataUrl = await fileToDataUrlCompressed(file);
       previewImg.src = dataUrl;
+      loader.style.display = 'none';
+
       imgSk.classList.add('hidden');
       fileMeta.classList.remove('hidden');
       fileMeta.textContent = 'ภาพพร้อมตรวจสอบ • ขนาดประมาณ ~ ' + Math.round((dataUrl.length*3/4)/1024) + ' KB';
@@ -566,39 +656,23 @@
       setStep(1);
     };
 
-    document.getElementById('checkBtn').addEventListener('click', async ()=>{
-      if(!previewImg.src) return alert('กรุณาเลือกรูปก่อน');
-      tStart = performance.now();
-      setStep(2);
-      await verifySlip(previewImg.src);
-    });
-
-    resetBtn.addEventListener('click', ()=>{
-      fileInput.value = '';
-      previewImg.src = '';
-      hideSection(previewWrap);
-      hideSection(resultSection);
-      log('รีเซ็ตแล้ว');
-      setStep(-1);
-    });
-
-    copyRef.addEventListener('click', async ()=>{
-      const txt = currentRef || refShort.textContent;
-      try{ await navigator.clipboard.writeText(txt); toastOnce(); }catch{}
-    });
-
-    copyReport.addEventListener('click', async ()=>{
-      try { await navigator.clipboard.writeText(reportText.textContent.trim()); toastOnce(); } catch {}
-    });
-
-    /* Accordion */
-    let reportOpen = false;
-    reportToggle.addEventListener('click', ()=>{
-      reportOpen = !reportOpen;
-      reportToggle.setAttribute('aria-expanded', reportOpen ? 'true' : 'false');
-      if (reportOpen) { reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; reportCaret.classList.add('open'); }
-      else { reportPanel.style.maxHeight = '0px'; reportCaret.classList.remove('open'); }
-    });
+    /* dHash 8x8 */
+    function dHashFromImage(img){
+      const w=9,h=8, c=document.createElement('canvas');
+      c.width=w; c.height=h; const x=c.getContext('2d');
+      x.drawImage(img,0,0,w,h);
+      const d=x.getImageData(0,0,w,h).data;
+      let bits='';
+      for(let y=0;y<h;y++){
+        for(let x1=0;x1<w-1;x1++){
+          const i=(y*w+x1)*4, j=(y*w+x1+1)*4;
+          const g1=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114);
+          const g2=(d[j]*0.299+d[j+1]*0.587+d[j+2]*0.114);
+          bits += (g1>g2)?'1':'0';
+        }
+      }
+      return bits.match(/.{1,4}/g).map(b=>parseInt(b,2).toString(16)).join('').toUpperCase();
+    }
 
     /* Crypto */
     const sha256Hex = async (text)=>{
@@ -618,20 +692,70 @@
       return 'FP-' + hex.slice(0,20);
     };
 
+    /* Accordion */
+    let reportOpen = false;
+    reportToggle.addEventListener('click', ()=>{
+      reportOpen = !reportOpen;
+      reportToggle.setAttribute('aria-expanded', reportOpen ? 'true' : 'false');
+      if (reportOpen) { reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; reportCaret.classList.add('open'); }
+      else { reportPanel.style.maxHeight = '0px'; reportCaret.classList.remove('open'); }
+    });
+
+    copyRef.addEventListener('click', async ()=>{
+      const txt = currentRef || refShort.textContent;
+      try{ await navigator.clipboard.writeText(txt); toastOnce(); }catch{}
+    });
+    copyReport.addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(reportText.textContent.trim()); toastOnce(); } catch {}
+    });
+    copyJSONBtn.addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(lastRawJson); toastOnce(); } catch {}
+    });
+
+    /* Actions */
+    document.getElementById('checkBtn').addEventListener('click', async ()=>{
+      if(!previewImg.src) return alert('กรุณาเลือกรูปก่อน');
+      if (inflightCtrl) inflightCtrl.abort();
+      inflightCtrl = new AbortController();
+      checkBtn.disabled = true;
+      tStart = performance.now();
+      setStep(2);
+      await verifySlip(previewImg.src, inflightCtrl.signal).finally(()=>{
+        checkBtn.disabled = false;
+        inflightCtrl = null;
+      });
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      if (inflightCtrl) inflightCtrl.abort();
+      fileInput.value = '';
+      previewImg.src = '';
+      hideSection(previewWrap);
+      hideSection(resultSection);
+      log('รีเซ็ตแล้ว');
+      setStep(-1);
+    });
+
     /* Verify */
-    const verifySlip = async (imgDataUrl)=>{
+    const verifySlip = async (imgDataUrl, signal)=>{
       try{
         setStatus('loading');
+        statusSub.textContent = 'กำลังอัปโหลดและตรวจสอบ…';
+        loader.style.display = 'block'; loaderLabel.textContent = 'กำลังส่งตรวจสลิป…';
         log('กำลังตรวจสอบภาพ…');
 
         const { data } = await axios.post(API_URL, { img: imgDataUrl }, {
           timeout: 25000,
           headers: { 'Content-Type': 'application/json' },
           referrerPolicy: 'no-referrer',
-          cache: 'no-store'
+          cache: 'no-store',
+          signal
         });
 
+        loaderLabel.textContent = 'กำลังประมวลผลผลลัพธ์…';
+
         const d = data?.data || {};
+        lastRawJson = JSON.stringify(data, null, 2);
         const msg = (data?.message || '') + '';
         const serverDup = /duplicate/i.test(msg) || data?.duplicate === true;
 
@@ -660,25 +784,68 @@
         checkedAt.textContent = new Date().toLocaleString('th-TH');
         elapsed.textContent = `ใช้เวลา ~ ${ms} ms`;
 
+        const imgHash = dHashFromImage(previewImg);
+
         let statusText;
         if (serverDup) { setStatus('duplicate'); log('ตรวจพบสลิปซ้ำจากระบบปลายทาง'); statusText = 'สลิปซ้ำ'; }
         else if (d && (d.ref || (d.amount!=null && d.sender_name && d.receiver_name))) { setStatus('valid'); log('ตรวจสอบเสร็จสิ้น'); statusText = 'สลิปจริง'; }
         else { setStatus('invalid'); log('ข้อมูลไม่ครบถ้วน'); statusText = 'สลิปปลอมหรือไม่ถูกต้อง'; }
 
-        const report = buildReport(d, { statusText, fp });
+        const report = buildReport(d, { statusText, fp, imgHash });
         reportText.textContent = report;
         reportSummary.textContent = `ใบรายงาน • ${statusText} • Ref: ${tinyRef(currentRef)}`;
+        statusSub.textContent = 'สำเร็จ';
         if (reportOpen) setTimeout(()=>{ reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; }, 30);
 
       }catch(err){
+        if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+          log('ยกเลิกคำขอแล้ว');
+          loader.style.display = 'none';
+          return;
+        }
         console.error(err);
         const msg = err?.response?.data?.error || err?.message || 'ไม่ทราบสาเหตุ';
         log('เกิดข้อผิดพลาดในการตรวจสอบ: ' + msg);
         setStatus('error');
         reportSummary.textContent = 'ใบรายงาน • ข้อผิดพลาด';
         reportText.textContent = 'ไม่สามารถจัดทำใบรายงานได้เนื่องจากเกิดข้อผิดพลาด: ' + msg;
+      } finally{
+        loader.style.display = 'none';
       }
     };
+
+    /* Background Parallax (เบามาก + เคารพ reduced-motion) */
+    (()=>{
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) return;
+      const layers = [
+        { el: document.querySelector('.fx-aurora'), d: 18 },
+        { el: document.querySelector('.fx-orb-1'), d: 26 },
+        { el: document.querySelector('.fx-orb-2'), d: -20 },
+        { el: document.querySelector('.fx-grid'),  d: 8 },
+      ].filter(x=>x.el);
+      let aimX=0, aimY=0, curX=0, curY=0, raf=null;
+
+      window.addEventListener('pointermove', (e)=>{
+        const rx = (e.clientX / innerWidth  - .5) * 2;
+        const ry = (e.clientY / innerHeight - .5) * 2;
+        aimX = rx; aimY = ry;
+        if (!raf) tick();
+      }, {passive:true});
+
+      function tick(){
+        curX += (aimX - curX) * 0.08;
+        curY += (aimY - curY) * 0.08;
+        layers.forEach(({el,d})=>{
+          el.style.transform = `translate3d(${curX*d}px, ${curY*d}px, 0)`;
+        });
+        if (Math.abs(aimX-curX) > 0.001 || Math.abs(aimY-curY) > 0.001){
+          raf = requestAnimationFrame(tick);
+        }else{
+          raf = null;
+        }
+      }
+    })();
   </script>
 </body>
 </html>
