@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -226,7 +227,7 @@
     <!-- Uploader -->
     <section class="fade-in mt-5 md:mt-7">
       <div id="dropZone" class="dz tween border-2 border-dashed border-transparent p-6 md:p-10 text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-2xl">
-        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        <input id="fileInput" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.heif" class="hidden" />
         <div class="flex flex-col items-center gap-3">
           <div class="size-16 rounded-2xl bg-violet-50 grid place-items-center pulse-glow">
             <span class="text-3xl">📄</span>
@@ -411,6 +412,7 @@
     /* Elements */
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
+    fileInput.removeAttribute('capture');
     const fileMeta  = document.getElementById('fileMeta');
     const previewWrap = document.getElementById('previewWrap');
     const previewImg  = document.getElementById('previewImg');
