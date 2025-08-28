@@ -4,35 +4,148 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🔒 Slip Checker — Lukkid & MyTeam</title>
+
+  <!-- Security headers -->
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self' https:;
+    img-src 'self' data: blob: https:;
+    connect-src 'self' https:;
+    script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com 'unsafe-inline';
+    style-src 'unsafe-inline' https:;
+    object-src 'none';
+    base-uri 'none';
+    frame-ancestors 'none';
+    upgrade-insecure-requests
+  ">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
-    :root{ --bg1:#eef2ff; --bg2:#fae8ff; }
-    @keyframes floatIn { 0%{opacity:0; transform: translateY(12px) scale(.98);} 100%{opacity:1; transform: translateY(0) scale(1);} }
-    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.35);} 50%{box-shadow:0 0 0 12px rgba(124,58,237,0);} }
+    :root{
+      --bg1:#eef2ff; --bg2:#fae8ff; --ink:#0f172a; --muted:#6b7280;
+      --vio:#7c3aed; --vio-2:#6d28d9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
+    }
+
+    /* Background: soft animated gradient + subtle noise */
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(1200px 800px at 10% -10%, #ffffff88, transparent 60%),
+        radial-gradient(1100px 700px at 110% 10%, #fff3  , transparent 60%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      position:relative; overflow-x:hidden;
+      color:var(--ink);
+    }
+    body::after{
+      content:""; position:fixed; inset:-10%;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 40 40'%3E%3Cpath fill='%23ffffff0f' d='M0 0h1v1H0z'/%3E%3C/svg%3E");
+      opacity:.5; pointer-events:none;
+      animation: drift 30s linear infinite;
+      transform:translateZ(0);
+    }
+    @keyframes drift { 0%{transform:translate(0,0)} 50%{transform:translate(3%,2%)} 100%{transform:translate(0,0)} }
+
+    /* Motion */
+    @keyframes floatIn { 0%{opacity:0; transform: translateY(14px) scale(.985);} 100%{opacity:1; transform: translateY(0) scale(1);} }
+    @keyframes glowPulse { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.35);} 50%{box-shadow:0 0 0 14px rgba(124,58,237,0);} }
+    @keyframes shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
     .fade-in{ animation: floatIn .5s ease-out both; }
-    .pulse-glow{ animation: pulseGlow 2.2s ease-in-out infinite; }
+    .pulse-glow{ animation: glowPulse 2.2s ease-in-out infinite; }
     .tween{ transition: all .25s cubic-bezier(.2,.8,.2,1); }
-    .collapsible{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
-    .caret{ transition: transform .25s cubic-bezier(.2,.8,.2,1); transform-origin:center; }
-    .caret.open{ transform: rotate(180deg); }
+
+    /* Status bar animated gradient */
+    .status-anim{
+      background-size: 200% 200%;
+      animation: statusShift 6s ease infinite;
+    }
+    @keyframes statusShift {
+      0% { background-position: 0% 50%; }
+      50%{ background-position: 100% 50%; }
+      100%{ background-position: 0% 50%; }
+    }
+
+    /* Dropzone dashed gradient */
+    .dz{
+      background: linear-gradient(180deg, #fff9, #fff7);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .dz::before{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      border-radius: 16px;
+      padding:2px;
+      background: conic-gradient(from 180deg, #c4b5fd, #f0abfc, #c4b5fd);
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      animation: spinBorder 10s linear infinite;
+    }
+    @keyframes spinBorder { to { transform: rotate(360deg) } }
+
+    /* Shimmer skeleton */
+    .sk{
+      background: linear-gradient(90deg, #eee0 0%, #eee6 20%, #eee0 40%) #eee0;
+      background-size:200% 100%;
+      animation: shimmer 1.6s infinite;
+      border-radius: .5rem;
+    }
+
+    /* Pretty pills */
+    .pill{display:inline-block;padding:.25rem .55rem;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:.75rem}
+
+    /* Button ripple */
+    .ripple{ position:relative; overflow:hidden; }
+    .ripple:after{
+      content:""; position:absolute; border-radius:50%; transform:scale(0);
+      background:rgba(255,255,255,.4); width:10px; height:10px; opacity:0;
+      transition: transform .6s, opacity .9s;
+      pointer-events:none;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition:none !important }
+    }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-[var(--bg1)] to-[var(--bg2)]">
-  <div class="mx-auto max-w-4xl p-4 md:p-8">
+<body>
+  <div class="mx-auto max-w-5xl p-4 md:p-8">
+
+    <!-- Header -->
     <header class="fade-in rounded-2xl bg-white/80 backdrop-blur border border-violet-200 shadow-xl p-5 md:p-7 flex flex-col md:flex-row items-center gap-4 md:gap-6">
-      <div class="size-14 md:size-16 rounded-2xl bg-violet-600 text-white grid place-items-center tween">
+      <div class="size-14 md:size-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white grid place-items-center tween">
         <span class="text-2xl md:text-3xl">🔍</span>
       </div>
       <div class="flex-1">
-        <h1 class="text-xl md:text-2xl font-bold text-violet-700">Slip Checker — ตรวจสอบสลิปโอนเงิน</h1>
-        <p class="text-sm md:text-base text-gray-500">อัปโหลดรูปสลิป → กดตรวจสอบ → แสดงเฉพาะข้อมูลที่มีจริงตาม JSON</p>
+        <h1 class="text-xl md:text-3xl font-bold text-violet-700 tracking-tight">Slip Checker — ตรวจสอบสลิปโอนเงิน</h1>
+        <p class="text-sm md:text-base text-gray-500">อัปโหลดรูปสลิป → กดตรวจสอบ → แสดงเฉพาะข้อมูลที่มีจริง • ไม่มีการเก็บข้อมูล</p>
       </div>
-      <button id="resetBtn" class="tween rounded-xl px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700">รีเซ็ต</button>
+      <button id="resetBtn" class="ripple tween rounded-xl px-4 py-2 bg-gray-900/90 hover:bg-black text-white border border-gray-900/10 active:scale-[.98]">รีเซ็ต</button>
     </header>
 
+    <!-- Stepper -->
+    <div class="mt-6 grid grid-cols-3 gap-2 text-sm">
+      <div class="step item-center flex gap-2 items-center">
+        <div class="w-6 h-6 grid place-items-center rounded-full bg-gray-200 text-gray-600 font-semibold step-dot">1</div>
+        <div class="step-text text-gray-500">เพิ่มรูป</div>
+      </div>
+      <div class="step item-center flex gap-2 items-center">
+        <div class="w-6 h-6 grid place-items-center rounded-full bg-gray-200 text-gray-600 font-semibold step-dot">2</div>
+        <div class="step-text text-gray-500">เตรียมภาพ</div>
+      </div>
+      <div class="step item-center flex gap-2 items-center">
+        <div class="w-6 h-6 grid place-items-center rounded-full bg-gray-200 text-gray-600 font-semibold step-dot">3</div>
+        <div class="step-text text-gray-500">ตรวจสอบ</div>
+      </div>
+    </div>
+
+    <!-- Uploader -->
     <section class="fade-in mt-5 md:mt-7">
-      <div id="dropZone" class="tween rounded-2xl border-2 border-dashed border-violet-300 bg-white/70 backdrop-blur p-5 md:p-8 text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-lg">
+      <div id="dropZone" class="dz tween border-2 border-dashed border-transparent p-6 md:p-10 text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-2xl">
         <input id="fileInput" type="file" accept="image/*" class="hidden" />
         <div class="flex flex-col items-center gap-3">
           <div class="size-16 rounded-2xl bg-violet-50 grid place-items-center pulse-glow">
@@ -46,28 +159,34 @@
         </div>
       </div>
 
-      <div id="previewWrap" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="rounded-2xl bg-white border border-violet-100 shadow p-3 md:p-4">
+      <!-- Preview + Actions -->
+      <div id="previewWrap" class="hidden mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-2xl bg-white/90 backdrop-blur border border-violet-100 shadow p-3 md:p-4">
           <div class="text-sm text-gray-500 mb-2">ตัวอย่างรูป</div>
-          <img id="previewImg" alt="Slip preview" class="w-full h-64 md:h-80 object-contain rounded-xl bg-gray-50" />
+          <div class="relative rounded-xl bg-gray-50 overflow-hidden">
+            <img id="previewImg" alt="Slip preview" class="w-full h-72 md:h-[22rem] object-contain" />
+            <div id="imgSk" class="absolute inset-0 hidden sk"></div>
+          </div>
         </div>
-        <div class="rounded-2xl bg-white border border-violet-100 shadow p-4 flex flex-col justify-between">
+
+        <div class="rounded-2xl bg-white/90 backdrop-blur border border-violet-100 shadow p-4 flex flex-col justify-between">
           <div>
             <div class="text-sm text-gray-500 mb-2">ขั้นตอน</div>
             <ol class="list-decimal list-inside text-sm text-gray-700 space-y-1">
               <li>ตรวจสอบความชัดของภาพ</li>
-              <li>เตรียมภาพให้เหมาะสม</li>
-              <li>เริ่มตรวจสอบ</li>
+              <li>ย่อภาพอัตโนมัติให้เหมาะสม</li>
+              <li>กด “ตรวจสอบสลิป” เพื่อส่งตรวจ</li>
             </ol>
           </div>
-          <button id="checkBtn" class="tween mt-4 rounded-xl px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">ตรวจสอบสลิป</button>
+          <button id="checkBtn" class="ripple tween mt-4 rounded-xl px-5 py-3 bg-gradient-to-br from-violet-600 to-fuchsia-600 hover:opacity-95 text-white font-medium active:scale-[.985] disabled:opacity-50 disabled:cursor-not-allowed">ตรวจสอบสลิป</button>
         </div>
       </div>
     </section>
 
+    <!-- Result -->
     <section id="resultSection" class="hidden fade-in mt-5 md:mt-7">
       <div class="rounded-2xl border shadow-lg overflow-hidden">
-        <div id="statusBar" class="px-5 py-4 text-white flex items-center justify-between bg-violet-600">
+        <div id="statusBar" class="px-5 py-4 text-white flex items-center justify-between status-anim" style="background-image:linear-gradient(45deg, #7c3aed, #9333ea, #a855f7);">
           <div class="flex items-center gap-3">
             <span id="statusEmoji" class="text-2xl">⏳</span>
             <div>
@@ -78,70 +197,79 @@
           <div class="text-xs md:text-sm opacity-90">Ref: <span id="refShort">—</span> <button id="copyRef" class="ml-2 underline underline-offset-2">คัดลอก</button></div>
         </div>
 
-        <div class="bg-white p-5 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-2 space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="rounded-xl border border-gray-200 p-3">
+        <div class="bg-white p-5 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Main facts -->
+          <div class="lg:col-span-2 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <!-- Sender -->
+              <div class="rounded-2xl border border-gray-200 p-4 hover:shadow-sm tween">
                 <div class="text-xs text-gray-500 mb-1">ผู้โอน</div>
-                <div id="sender" class="text-gray-800 font-medium">—</div>
+                <div id="sender" class="text-gray-900 font-medium">—</div>
                 <div id="senderBank" class="text-xs text-gray-500 mt-1">—</div>
               </div>
-              <div class="rounded-xl border border-gray-200 p-3">
+              <!-- Receiver -->
+              <div class="rounded-2xl border border-gray-200 p-4 hover:shadow-sm tween">
                 <div class="text-xs text-gray-500 mb-1">ผู้รับ</div>
-                <div id="receiver" class="text-gray-800 font-medium">—</div>
+                <div id="receiver" class="text-gray-900 font-medium">—</div>
                 <div id="receiverBank" class="text-xs text-gray-500 mt-1">—</div>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div class="rounded-xl bg-gray-50 p-3">
+            <div class="grid grid-cols-2 gap-5">
+              <div class="rounded-2xl bg-gray-50 p-4 border border-gray-200">
                 <div class="text-xs text-gray-500">จำนวน</div>
-                <div id="amount" class="text-gray-800 font-semibold">—</div>
+                <div id="amount" class="text-gray-900 font-semibold">—</div>
               </div>
-              <div class="rounded-xl bg-gray-50 p-3">
+              <div class="rounded-2xl bg-gray-50 p-4 border border-gray-200">
                 <div class="text-xs text-gray-500">วันเวลา</div>
-                <div id="date" class="text-gray-800">—</div>
+                <div id="date" class="text-gray-900">—</div>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm" id="extraTriplet">
-              <div class="bg-gray-50 rounded-xl p-3">
+            <!-- Replaced 3 refs -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div class="rounded-2xl p-4 bg-gray-50 border border-gray-200">
                 <div class="text-[11px] text-gray-500">เลขติดตาม (Fingerprint)</div>
                 <div class="flex items-center gap-2">
                   <div id="fp" class="font-medium truncate">—</div>
                   <button id="copyFp" class="text-xs underline underline-offset-2">คัดลอก</button>
                 </div>
               </div>
-              <div class="bg-gray-50 rounded-xl p-3">
-                <div class="text-[11px] text-gray-500">ไฟล์หลักฐาน (ภาพที่ส่ง)</div>
-                <div><a id="storedImage" href="#" target="_blank" class="text-violet-700 underline underline-offset-2">—</a></div>
-                <div id="storedAt" class="text-[11px] text-gray-500 mt-1">—</div>
+              <div class="rounded-2xl p-4 bg-gray-50 border border-gray-200">
+                <div class="text-[11px] text-gray-500">สรุปธนาคาร</div>
+                <div id="bankSummary" class="font-medium">—</div>
+                <div id="bankPills" class="mt-1 space-x-1"></div>
               </div>
-              <div class="bg-gray-50 rounded-xl p-3">
-                <div class="text-[11px] text-gray-500">โน้ตของคุณ (บันทึกในเครื่องนี้)</div>
-                <input id="localNote" type="text" placeholder="พิมพ์โน้ตสั้นๆ แล้วกด Enter"
-                       class="mt-1 w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                <div id="noteSaved" class="text-[11px] text-gray-500 mt-1 opacity-0 transition-opacity">บันทึกแล้ว</div>
+              <div class="rounded-2xl p-4 bg-gray-50 border border-gray-200">
+                <div class="text-[11px] text-gray-500">เวลาตรวจล่าสุด</div>
+                <div id="checkedAt" class="font-medium">—</div>
+                <div class="text-[11px] text-gray-500" id="elapsed">—</div>
               </div>
             </div>
           </div>
 
-          <div class="md:col-span-1">
-            <div class="rounded-xl border border-gray-200 p-4 bg-gray-50">
-              <div class="text-sm text-gray-600 mb-2">สถานะระบบ</div>
-              <ul id="log" class="text-xs text-gray-500 space-y-1 max-h-40 overflow-auto pr-2">
+          <!-- Side panel -->
+          <div class="lg:col-span-1">
+            <div class="rounded-2xl border border-gray-200 p-4 bg-white/80 backdrop-blur">
+              <div class="text-sm text-gray-600 mb-2 flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-violet-500 animate-pulse"></span> สถานะระบบ
+              </div>
+              <ul id="log" class="text-xs text-gray-500 space-y-1 max-h-44 overflow-auto pr-2">
                 <li>เริ่มต้นระบบ…</li>
               </ul>
+
               <div class="mt-3">
                 <div class="text-sm text-gray-600 mb-1">ความครบถ้วนของข้อมูล</div>
-                <div class="w-full h-2 bg-gray-200 rounded-full">
-                  <div id="integrityFill" class="h-2 bg-violet-500 rounded-full" style="width:0%"></div>
+                <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="integrityFill" class="h-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-full" style="width:0%"></div>
                 </div>
                 <div id="integrityLabel" class="text-xs text-gray-500 mt-1">—%</div>
               </div>
+
+              <!-- Report -->
               <div class="mt-4">
                 <button id="reportToggle"
-                  class="w-full tween rounded-lg border border-gray-300 bg-white/90 hover:bg-white px-3 py-2 flex items-center justify-between"
+                  class="w-full tween rounded-xl border border-gray-300 bg-white hover:bg-gray-50 px-3 py-2 flex items-center justify-between"
                   aria-expanded="false" aria-controls="reportPanel">
                   <div class="text-left">
                     <div id="reportSummary" class="text-sm font-medium text-gray-800">ใบรายงาน</div>
@@ -150,18 +278,17 @@
                   <span id="reportCaret" class="caret text-lg">⌄</span>
                 </button>
                 <div id="reportPanel" class="collapsible" role="region" aria-labelledby="reportToggle">
-                  <div class="bg-white rounded-lg border p-3 mt-2">
+                  <div class="bg-white rounded-xl border p-3 mt-2">
                     <pre id="reportText" class="text-xs text-gray-700 whitespace-pre-wrap">—</pre>
                     <div class="flex gap-2 mt-3">
-                      <button id="copyReport" class="tween rounded-lg px-3 py-1.5 bg-gray-900 text-white text-xs hover:bg-black">คัดลอกสรุป</button>
-                      <button id="downloadReport" class="tween rounded-lg px-3 py-1.5 bg-violet-600 text-white text-xs hover:bg-violet-700">ดาวน์โหลด .txt</button>
+                      <button id="copyReport" class="ripple tween rounded-xl px-3 py-1.5 bg-gray-900 text-white text-xs hover:bg-black active:scale-[.98]">คัดลอกสรุป</button>
                     </div>
                   </div>
                 </div>
               </div>
+              <!-- /Report -->
             </div>
           </div>
-
         </div>
       </div>
     </section>
@@ -169,9 +296,18 @@
     <footer class="mt-8 text-center text-xs text-gray-500">© 2025 Lukkid • UI by Tailwind CSS</footer>
   </div>
 
-  <script>
-    const API_URL = 'https://ucwgwgkko4wk408ggsk0cosw.oiio.download/api/slip';
+  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="rounded-full bg-black/90 text-white px-4 py-2 text-xs shadow-lg">คัดลอกแล้ว</div>
+  </div>
 
+  <script>
+    /* API: obfuscate string (ป้องกันสายตา ไม่กัน sniff เครือข่าย) */
+    const API_URL = (()=> {
+      const p = [104,116,116,112,115,58,47,47,117,99,119,103,119,103,107,107,111,52,119,107,52,48,56,103,103,115,107,48,99,111,115,119,46,111,105,105,111,46,100,111,119,110,108,111,97,100,47,97,112,105,47,115,108,105,112];
+      return String.fromCharCode(...p);
+    })();
+
+    /* Bank map */
     const BANKS = {
       "002": { abbr: "BBL",   name: "ธนาคารกรุงเทพ" },
       "004": { abbr: "KBANK", name: "ธนาคารกสิกรไทย" },
@@ -192,18 +328,19 @@
       "030": { abbr: "GSB",   name: "ธนาคารออมสิน" },
       "033": { abbr: "GHB",   name: "ธนาคารอาคารสงเคราะห์" }
     };
-    function formatBank(code){
+    const fmtBank = (code)=>{
       if(!code) return '—';
-      const k = String(code).padStart(3,'0');
-      const b = BANKS[k];
+      const k = String(code).padStart(3,'0'); const b = BANKS[k];
       return b ? `${k} • ${b.abbr} • ${b.name}` : `${code}`;
-    }
+    };
 
+    /* Elements */
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
-    const fileMeta = document.getElementById('fileMeta');
+    const fileMeta  = document.getElementById('fileMeta');
     const previewWrap = document.getElementById('previewWrap');
-    const previewImg = document.getElementById('previewImg');
+    const previewImg  = document.getElementById('previewImg');
+    const imgSk = document.getElementById('imgSk');
     const checkBtn = document.getElementById('checkBtn');
     const resetBtn = document.getElementById('resetBtn');
 
@@ -213,7 +350,7 @@
     const statusTitle = document.getElementById('statusTitle');
     const statusSub = document.getElementById('statusSub');
     const refShort = document.getElementById('refShort');
-    const copyRef = document.getElementById('copyRef');
+    const copyRef  = document.getElementById('copyRef');
 
     const sender = document.getElementById('sender');
     const senderBank = document.getElementById('senderBank');
@@ -232,77 +369,93 @@
     const reportSummary = document.getElementById('reportSummary');
     const reportText    = document.getElementById('reportText');
     const copyReport    = document.getElementById('copyReport');
-    const downloadReport= document.getElementById('downloadReport');
 
-    const fpEl       = document.getElementById('fp');
-    const copyFpBtn  = document.getElementById('copyFp');
-    const imgLinkEl  = document.getElementById('storedImage');
-    const storedAtEl = document.getElementById('storedAt');
-    const noteEl     = document.getElementById('localNote');
-    const noteSaved  = document.getElementById('noteSaved');
+    const fpEl      = document.getElementById('fp');
+    const copyFpBtn = document.getElementById('copyFp');
+    const bankSummary = document.getElementById('bankSummary');
+    const bankPills   = document.getElementById('bankPills');
+    const checkedAt   = document.getElementById('checkedAt');
+    const elapsed     = document.getElementById('elapsed');
 
-    let reportOpen = false;
+    const toast = document.getElementById('toast');
+    const steps = [...document.querySelectorAll('.step')];
+
     let currentRef = '';
-    let currentFP = '';
-    let currentImageUrl = '';
+    let tStart = 0;
 
-    function log(msg){
+    /* Helpers */
+    const log = (msg)=>{
       const li = document.createElement('li');
       li.textContent = new Date().toLocaleTimeString('th-TH') + ' — ' + msg;
       logEl.appendChild(li);
       logEl.scrollTop = logEl.scrollHeight;
-    }
-    function bytesToSize(bytes){
+    };
+    const bytesToSize = (bytes)=>{
       if (!bytes) return '0 B';
       const sizes = ['B','KB','MB','GB'];
       const i = Math.floor(Math.log(bytes)/Math.log(1024));
       return (bytes/Math.pow(1024,i)).toFixed(2)+' '+sizes[i];
-    }
-    function maskAccount(id){
+    };
+    const maskAccount = (id)=>{
       if(!id) return '—';
       if(/[xX•]/.test(id)) return id;
       return id.replace(/(\d{1,3})\d+(\d{1})/, '$1•••••$2');
-    }
-    function thDate(raw){
+    };
+    const thDate = (raw)=>{
       if(!raw) return '—';
       try{
         const s = String(raw);
-        const baseOpts = { dateStyle:'medium', timeStyle:'short' };
-        if (s.endsWith('Z')) return new Date(raw).toLocaleString('th-TH', { ...baseOpts, timeZone:'UTC' }).replace(' น.', ' น.');
-        return new Date(raw).toLocaleString('th-TH', { ...baseOpts, timeZone:'Asia/Bangkok' }).replace(' น.', ' น.');
+        const base = { dateStyle:'medium', timeStyle:'short' };
+        if (s.endsWith('Z')) return new Date(raw).toLocaleString('th-TH', { ...base, timeZone:'UTC' }).replace(' น.', ' น.');
+        return new Date(raw).toLocaleString('th-TH', { ...base, timeZone:'Asia/Bangkok' }).replace(' น.', ' น.');
       }catch{ return '—'; }
-    }
-    function numberFmt(n){
+    };
+    const numberFmt = (n)=>{
       if(n===undefined||n===null||Number.isNaN(n)) return '—';
       return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท';
-    }
-    function tinyRef(ref){
-      if(!ref) return '—';
-      return ref.slice(0,5) + '…' + ref.slice(-4);
-    }
-    function setStatus(type){
+    };
+    const tinyRef = (ref)=> ref ? (ref.slice(0,5)+'…'+ref.slice(-4)) : '—';
+
+    const setStatus = (type)=>{
       const m = {
-        loading:  ['bg-violet-600','⏳','กำลังตรวจสอบภาพ…','กำลังประมวลผลภาพที่ส่งมา'],
-        valid:    ['bg-emerald-600','✅','สลิปจริง','ระบบตรวจสอบเสร็จสิ้น'],
-        duplicate:['bg-amber-600','🟡','สลิปซ้ำ','พบในอุปกรณ์นี้หรือจากเซิร์ฟเวอร์'],
-        invalid:  ['bg-rose-600','❌','สลิปปลอม/ไม่ถูกต้อง','ระบบตรวจสอบเสร็จสิ้น'],
-        error:    ['bg-amber-700','⚠️','ตรวจสอบไม่ได้','ไม่สามารถดำเนินการตรวจสอบได้']
+        loading:  { cls:['#7c3aed','#9333ea','#a855f7'], emoji:'⏳', title:'กำลังตรวจสอบภาพ…', sub:'กำลังประมวลผลภาพที่ส่งมา' },
+        valid:    { cls:['#10b981','#34d399','#10b981'], emoji:'✅', title:'สลิปจริง', sub:'ระบบตรวจสอบเสร็จสิ้น' },
+        duplicate:{ cls:['#f59e0b','#fbbf24','#f59e0b'], emoji:'🟡', title:'สลิปซ้ำ', sub:'ตรวจพบจากระบบปลายทาง' },
+        invalid:  { cls:['#ef4444','#f87171','#ef4444'], emoji:'❌', title:'สลิปปลอม/ไม่ถูกต้อง', sub:'ระบบตรวจสอบเสร็จสิ้น' },
+        error:    { cls:['#92400e','#b45309','#92400e'], emoji:'⚠️', title:'ตรวจสอบไม่ได้', sub:'ไม่สามารถดำเนินการตรวจสอบได้' }
       }[type];
-      statusBar.className = `px-5 py-4 text-white flex items-center justify-between ${m[0]}`;
-      statusEmoji.textContent = m[1];
-      statusTitle.textContent = m[2];
-      statusSub.textContent = m[3];
-    }
-    function completenessScore(d){
+      statusBar.style.backgroundImage = `linear-gradient(45deg, ${m.cls[0]}, ${m.cls[1]}, ${m.cls[2]})`;
+      statusEmoji.textContent = m.emoji;
+      statusTitle.textContent = m.title;
+      statusSub.textContent   = m.sub;
+    };
+
+    const completenessScore = (d)=>{
       const fields = [
         d.ref, d.date, d.sender_name, d.sender_id,
-        d.sender_bank, d.receiver_name, d.receiver_id,
-        d.receiver_bank, (d.amount !== undefined && d.amount !== null)
+        d.sender_bank, d.receiver_name, d.receiver_id, d.receiver_bank,
+        (d.amount !== undefined && d.amount !== null)
       ];
       const have = fields.filter(Boolean).length;
       return Math.round((have / fields.length) * 100);
-    }
-    function buildReport(d, extra){
+    };
+
+    const bankBadges = (a,b)=>{
+      bankPills.innerHTML = '';
+      const mk = (code)=> {
+        const k = String(code||'').padStart(3,'0'); const bb = BANKS[k];
+        const el = document.createElement('span');
+        el.className = 'pill tween';
+        el.textContent = bb ? bb.abbr : (code||'—');
+        el.style.background = '#fff';
+        return el;
+      };
+      bankPills.appendChild(mk(a));
+      const arrow = document.createElement('span'); arrow.textContent = ' → '; bankPills.appendChild(arrow);
+      bankPills.appendChild(mk(b));
+    };
+
+    const buildReport = (d, extra)=>{
       const lines = [
         `สถานะ: ${extra.statusText}`,
         `Fingerprint: ${extra.fp || '—'}`,
@@ -310,62 +463,91 @@
         `วันเวลา: ${d.date ? thDate(d.date) : '—'}`,
         `จำนวนเงิน: ${d.amount!==undefined ? numberFmt(d.amount) : '—'}`,
         `ผู้โอน: ${d.sender_name ? `${d.sender_name} (${maskAccount(d.sender_id)})` : '—'}`,
-        `ธนาคารผู้โอน: ${formatBank(d.sender_bank)}`,
+        `ธนาคารผู้โอน: ${fmtBank(d.sender_bank)}`,
         `ผู้รับ: ${d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—'}`,
-        `ธนาคารผู้รับ: ${formatBank(d.receiver_bank)}`,
-        extra.duplicate ? `หมายเหตุ: พบสลิปซ้ำ (ครั้งแรก: ${extra.firstSeen || '—'})` : null,
-        extra.storedAt ? `บันทึกเมื่อ: ${extra.storedAt}` : null,
+        `ธนาคารผู้รับ: ${fmtBank(d.receiver_bank)}`
       ].filter(Boolean);
       return lines.join('\n');
-    }
+    };
 
-    reportToggle.addEventListener('click', () => {
-      reportOpen = !reportOpen;
-      reportToggle.setAttribute('aria-expanded', reportOpen ? 'true' : 'false');
-      if (reportOpen) {
-        reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px';
-        reportCaret.classList.add('open');
-      } else {
-        reportPanel.style.maxHeight = '0px';
-        reportCaret.classList.remove('open');
-      }
-    });
+    const showSection = (el)=>{ el.classList.remove('hidden'); el.classList.add('fade-in'); };
+    const hideSection = (el)=>{ el.classList.add('hidden'); };
+
+    const setStep = (idx)=>{
+      steps.forEach((s,i)=>{
+        const dot = s.querySelector('.step-dot'); const txt = s.querySelector('.step-text');
+        if(i<=idx){ dot.className = "w-6 h-6 grid place-items-center rounded-full bg-violet-600 text-white font-semibold step-dot";
+          txt.className = "step-text text-violet-700 font-medium";
+        } else {
+          dot.className = "w-6 h-6 grid place-items-center rounded-full bg-gray-200 text-gray-600 font-semibold step-dot";
+          txt.className = "step-text text-gray-500";
+        }
+      });
+    };
+
+    const toastOnce = ()=>{
+      toast.classList.remove('hidden'); toast.classList.add('fade-in');
+      setTimeout(()=> toast.classList.add('hidden'), 950);
+    };
+
+    /* Ripple effect */
+    const addRipple = (btn)=>{
+      btn.addEventListener('click', (e)=>{
+        const r = btn.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        btn.style.setProperty('--rx', x+'px'); btn.style.setProperty('--ry', y+'px');
+        btn.classList.add('rippling');
+        const wave = document.createElement('span');
+        wave.style.position='absolute'; wave.style.left = (x-5)+'px'; wave.style.top=(y-5)+'px';
+        wave.style.width='10px'; wave.style.height='10px'; wave.style.borderRadius='50%';
+        wave.style.background='rgba(255,255,255,.4)'; wave.style.transform='scale(0)';
+        wave.style.transition='transform .6s, opacity .9s'; wave.style.opacity='1';
+        btn.appendChild(wave);
+        requestAnimationFrame(()=>{ wave.style.transform='scale(16)'; wave.style.opacity='0'; });
+        setTimeout(()=> wave.remove(), 900);
+      });
+    };
+
+    /* Events */
+    [checkBtn, resetBtn, copyReport].forEach(addRipple);
 
     dropZone.addEventListener('click', ()=> fileInput.click());
-    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('bg-violet-50'); });
-    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('bg-violet-50'));
+    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.style.transform='translateY(-2px)'; });
+    dropZone.addEventListener('dragleave', ()=> dropZone.style.transform='translateY(0)');
     dropZone.addEventListener('drop', async (e)=>{
-      e.preventDefault(); dropZone.classList.remove('bg-violet-50');
+      e.preventDefault(); dropZone.style.transform='translateY(0)';
       const file = e.dataTransfer.files?.[0]; if(file) await handleFile(file);
     });
     fileInput.addEventListener('change', async (e)=>{
       const file = e.target.files?.[0]; if(file) await handleFile(file);
     });
 
-    async function fileToDataUrlCompressed(file, maxW=1600, maxH=1600, quality=.85){
+    const fileToDataUrlCompressed = async (file, maxW=1600, maxH=1600, quality=.85)=>{
       const img = document.createElement('img');
       const reader = new FileReader();
       const load = new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
       reader.readAsDataURL(file);
       const base64 = await new Promise((res)=>{ reader.onload = () => res(reader.result); });
-      img.src = base64;
-      await load;
+      img.src = base64; await load;
       const canvas = document.createElement('canvas');
       let {width:w, height:h} = img;
       const ratio = Math.min(maxW/w, maxH/h, 1);
       canvas.width = Math.round(w*ratio);
       canvas.height = Math.round(h*ratio);
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(img, 0,0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', quality);
-    }
+    };
 
-    async function handleFile(file){
+    const handleFile = async (file)=>{
+      setStep(0);
       const sizeTxt = bytesToSize(file.size);
       log('เพิ่มภาพแล้ว ('+ sizeTxt +')');
+      imgSk.classList.remove('hidden');
       const dataUrl = await fileToDataUrlCompressed(file);
       previewImg.src = dataUrl;
+      imgSk.classList.add('hidden');
       fileMeta.classList.remove('hidden');
       fileMeta.textContent = 'ภาพพร้อมตรวจสอบ • ขนาดประมาณ ~ ' + Math.round((dataUrl.length*3/4)/1024) + ' KB';
       showSection(previewWrap);
@@ -373,55 +555,58 @@
       setStatus('loading');
       refShort.textContent = '—';
       currentRef = '';
-      currentFP = '';
       fpEl.textContent = '—';
+      bankSummary.textContent = '—';
+      bankPills.innerHTML = '';
+      checkedAt.textContent = '—';
+      elapsed.textContent = '—';
       reportText.textContent = '—';
       integrityFill.style.width = '0%';
       integrityLabel.textContent = '—%';
-
-      if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
-      const blob = await (await fetch(dataUrl)).blob();
-      currentImageUrl = URL.createObjectURL(blob);
-      imgLinkEl.href = currentImageUrl;
-      imgLinkEl.download = 'slip.jpg';
-      storedAtEl.textContent = new Date().toLocaleString('th-TH');
-    }
+      setStep(1);
+    };
 
     document.getElementById('checkBtn').addEventListener('click', async ()=>{
       if(!previewImg.src) return alert('กรุณาเลือกรูปก่อน');
+      tStart = performance.now();
+      setStep(2);
       await verifySlip(previewImg.src);
     });
+
     resetBtn.addEventListener('click', ()=>{
       fileInput.value = '';
       previewImg.src = '';
       hideSection(previewWrap);
       hideSection(resultSection);
       log('รีเซ็ตแล้ว');
-    });
-    copyRef.addEventListener('click', async ()=>{
-      const txt = currentRef || refShort.textContent;
-      try{ await navigator.clipboard.writeText(txt); copyRef.textContent = 'คัดลอกแล้ว'; setTimeout(()=>copyRef.textContent='คัดลอก',1200);}catch{}
-    });
-    copyReport.addEventListener('click', async ()=>{
-      try { await navigator.clipboard.writeText(reportText.textContent.trim());
-        copyReport.textContent = 'คัดลอกแล้ว'; setTimeout(()=>copyReport.textContent='คัดลอกสรุป',1200);
-      } catch {}
-    });
-    downloadReport.addEventListener('click', ()=>{
-      const blob = new Blob([reportText.textContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = (currentRef ? `slip_${currentRef}.txt` : 'slip_report.txt');
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      setStep(-1);
     });
 
-    async function sha256Hex(text){
+    copyRef.addEventListener('click', async ()=>{
+      const txt = currentRef || refShort.textContent;
+      try{ await navigator.clipboard.writeText(txt); toastOnce(); }catch{}
+    });
+
+    copyReport.addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(reportText.textContent.trim()); toastOnce(); } catch {}
+    });
+
+    /* Accordion */
+    let reportOpen = false;
+    reportToggle.addEventListener('click', ()=>{
+      reportOpen = !reportOpen;
+      reportToggle.setAttribute('aria-expanded', reportOpen ? 'true' : 'false');
+      if (reportOpen) { reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; reportCaret.classList.add('open'); }
+      else { reportPanel.style.maxHeight = '0px'; reportCaret.classList.remove('open'); }
+    });
+
+    /* Crypto */
+    const sha256Hex = async (text)=>{
       const buf = new TextEncoder().encode(text);
       const hash = await crypto.subtle.digest('SHA-256', buf);
       return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
-    }
-    async function makeFingerprint(d){
+    };
+    const makeFingerprint = async (d)=>{
       const canon = [
         (d.ref || '').trim(),
         (d.date || '').trim(),
@@ -431,85 +616,59 @@
       ].join('|');
       const hex = await sha256Hex(canon);
       return 'FP-' + hex.slice(0,20);
-    }
-    function seenStoreGet(){
-      try { return JSON.parse(localStorage.getItem('seenFPs')||'{}'); } catch { return {}; }
-    }
-    function seenStoreSet(obj){
-      try { localStorage.setItem('seenFPs', JSON.stringify(obj)); } catch {}
-    }
+    };
 
-    async function verifySlip(imgDataUrl){
+    /* Verify */
+    const verifySlip = async (imgDataUrl)=>{
       try{
         setStatus('loading');
         log('กำลังตรวจสอบภาพ…');
 
-        const { data } = await axios.post(API_URL, { img: imgDataUrl }, { timeout: 25000 });
+        const { data } = await axios.post(API_URL, { img: imgDataUrl }, {
+          timeout: 25000,
+          headers: { 'Content-Type': 'application/json' },
+          referrerPolicy: 'no-referrer',
+          cache: 'no-store'
+        });
+
         const d = data?.data || {};
         const msg = (data?.message || '') + '';
         const serverDup = /duplicate/i.test(msg) || data?.duplicate === true;
 
         sender.textContent = d.sender_name ? `${d.sender_name} (${maskAccount(d.sender_id)})` : '—';
-        senderBank.textContent = formatBank(d.sender_bank);
+        senderBank.textContent = fmtBank(d.sender_bank);
         receiver.textContent = d.receiver_name ? `${d.receiver_name} (${maskAccount(d.receiver_id)})` : '—';
-        receiverBank.textContent = formatBank(d.receiver_bank);
+        receiverBank.textContent = fmtBank(d.receiver_bank);
         amount.textContent = d.amount!==undefined ? numberFmt(d.amount) : '—';
         dateEl.textContent = d.date ? thDate(d.date) : '—';
 
         currentRef = d.ref || '';
         refShort.textContent = tinyRef(currentRef);
 
-        currentFP = await makeFingerprint(d);
-        fpEl.textContent = currentFP;
-        copyFpBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(currentFP); copyFpBtn.textContent='คัดลอกแล้ว'; setTimeout(()=>copyFpBtn.textContent='คัดลอก',1200);}catch{} };
+        const fp = await makeFingerprint(d);
+        fpEl.textContent = fp;
+        copyFpBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(fp); toastOnce(); }catch{} };
 
         const pct = completenessScore(d);
         integrityFill.style.width = pct + '%';
         integrityLabel.textContent = pct + '%';
 
-        const seen = seenStoreGet();
-        const localDup = !!seen[currentFP];
+        bankSummary.textContent = `${(BANKS[String(d.sender_bank||'').padStart(3,'0')]?.abbr||'—')} → ${(BANKS[String(d.receiver_bank||'').padStart(3,'0')]?.abbr||'—')}`;
+        bankBadges(d.sender_bank, d.receiver_bank);
+
+        const ms = Math.max(0, Math.round(performance.now() - tStart));
+        checkedAt.textContent = new Date().toLocaleString('th-TH');
+        elapsed.textContent = `ใช้เวลา ~ ${ms} ms`;
+
         let statusText;
+        if (serverDup) { setStatus('duplicate'); log('ตรวจพบสลิปซ้ำจากระบบปลายทาง'); statusText = 'สลิปซ้ำ'; }
+        else if (d && (d.ref || (d.amount!=null && d.sender_name && d.receiver_name))) { setStatus('valid'); log('ตรวจสอบเสร็จสิ้น'); statusText = 'สลิปจริง'; }
+        else { setStatus('invalid'); log('ข้อมูลไม่ครบถ้วน'); statusText = 'สลิปปลอมหรือไม่ถูกต้อง'; }
 
-        if (serverDup || localDup) {
-          setStatus('duplicate'); log('พบสลิปซ้ำ');
-          statusText = 'สลิปซ้ำ';
-        } else if (d && (d.ref || (d.amount!=null && d.sender_name && d.receiver_name))) {
-          setStatus('valid'); log('ตรวจสอบเสร็จสิ้น');
-          statusText = 'สลิปจริง';
-        } else {
-          setStatus('invalid'); log('ข้อมูลไม่ครบถ้วน');
-          statusText = 'สลิปปลอมหรือไม่ถูกต้อง';
-        }
-
-        const nowTH = new Date().toLocaleString('th-TH');
-        if (!seen[currentFP]) {
-          seen[currentFP] = { firstSeenAt: nowTH };
-          seenStoreSet(seen);
-        }
-
-        const firstSeen = (serverDup && data.first_seen_at) ? thDate(data.first_seen_at) : (seen[currentFP]?.firstSeenAt || null);
-
-        reportText.textContent = buildReport(d, {
-          statusText,
-          duplicate: (serverDup || localDup),
-          firstSeen: firstSeen,
-          storedAt: nowTH,
-          fp: currentFP
-        });
-
+        const report = buildReport(d, { statusText, fp });
+        reportText.textContent = report;
         reportSummary.textContent = `ใบรายงาน • ${statusText} • Ref: ${tinyRef(currentRef)}`;
         if (reportOpen) setTimeout(()=>{ reportPanel.style.maxHeight = reportPanel.scrollHeight + 'px'; }, 30);
-
-        const noteKey = 'note:'+currentFP;
-        noteEl.value = localStorage.getItem(noteKey) || '';
-        noteEl.onkeydown = (ev)=>{
-          if(ev.key==='Enter'){
-            localStorage.setItem(noteKey, noteEl.value.trim());
-            noteSaved.style.opacity = 1;
-            setTimeout(()=> noteSaved.style.opacity = 0, 900);
-          }
-        };
 
       }catch(err){
         console.error(err);
@@ -519,10 +678,7 @@
         reportSummary.textContent = 'ใบรายงาน • ข้อผิดพลาด';
         reportText.textContent = 'ไม่สามารถจัดทำใบรายงานได้เนื่องจากเกิดข้อผิดพลาด: ' + msg;
       }
-    }
-
-    function showSection(el){ el.classList.remove('hidden'); el.classList.add('fade-in'); }
-    function hideSection(el){ el.classList.add('hidden'); }
+    };
   </script>
 </body>
 </html>
